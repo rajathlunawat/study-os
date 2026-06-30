@@ -8,6 +8,9 @@ in the document content — no hallucination.
 import os
 import uuid
 import tempfile
+from dotenv import load_dotenv
+load_dotenv()  # Load variables from .env if it exists
+
 from fastapi import FastAPI, UploadFile, Form, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -243,9 +246,11 @@ async def chat(req: ChatRequest):
         import re
         relevant = simple_search(req.message, context)
         
-        # Force newlines before bullets (•, -, *) and numbered lists (1., 2., etc.)
-        formatted = re.sub(r'([•\-\*] )', r'\n\n\1', relevant)
-        formatted = re.sub(r'(\s\d+\.\s)', r'\n\n\1', formatted)
+        # Convert • to - and force newlines so react-markdown parses it as a real list
+        formatted = re.sub(r'[•\-\*]\s+', '\n- ', relevant)
+        
+        # Force newlines before numbers like "1. "
+        formatted = re.sub(r'\s+(\d+\.\s)', r'\n\n\1', formatted)
         
         reply = (
             f"## 📖 Key Points from Your Document\n\n"
