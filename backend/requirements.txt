@@ -1,3 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Explicitly install CPU-only PyTorch to prevent Render out-of-memory build errors
+torch==2.1.2+cpu
+torchvision==0.16.2+cpu
+
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 sqlalchemy>=2.0.19
