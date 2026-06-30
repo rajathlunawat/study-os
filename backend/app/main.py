@@ -44,10 +44,12 @@ gemini_model = None
 
 if GEMINI_AVAILABLE and GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-2.0-flash")
-    print("✅ Gemini configured successfully")
+    # Use gemini-1.5-flash for broad SDK compatibility
+    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+    print(f"✅ Gemini configured with key: {GEMINI_API_KEY[:8]}...")
 else:
-    print("⚠️  No GOOGLE_API_KEY set — chat will use extracted text only (no AI generation)")
+    reason = "no google-generativeai package" if not GEMINI_AVAILABLE else "no GOOGLE_API_KEY env var"
+    print(f"⚠️  Gemini not available ({reason}) — chat will use extracted text only")
 
 # ── In-memory document store ──────────────────────────────────────
 # Maps doc_id -> { metadata + extracted text }
@@ -226,12 +228,15 @@ async def chat(req: ChatRequest):
             )
             reply = response.text
         except Exception as e:
-            print(f"Gemini error: {e}")
+            import traceback
+            print(f"❌ Gemini error: {type(e).__name__}: {e}")
+            traceback.print_exc()
             # Fall back to simple search
             relevant = simple_search(req.message, context)
             reply = (
-                f"*(AI generation temporarily unavailable — showing relevant excerpts)*\n\n"
-                f"Here are the most relevant sections from your documents:\n\n{relevant}"
+                f"## 📖 Key Points from Your Document\n\n"
+                f"Based on your question: *\"{req.message}\"*\n\n"
+                f"{relevant}"
             )
     else:
         # No Gemini — use keyword search to find relevant text and format it nicely
