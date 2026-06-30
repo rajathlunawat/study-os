@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+*.db
+*.sqlite3
+
+# ML large files
+backend/ml/models/*.joblib
+backend/ml/data/
+
+# Node
+node_modules/
+.next/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

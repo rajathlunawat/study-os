@@ -1,0 +1,16 @@
+{
+  "regressor": {
+    "syllabus_coverage": 0.7881727972543414,
+    "quiz_accuracy": 0.1135423420620922,
+    "task_completion": 0.03776072287444955,
+    "consistency_score": 0.031119430629348577,
+    "flashcard_mastery": 0.02940470717976831
+  },
+  "classifier": {
+    "syllabus_coverage": 0.41868277584664826,
+    "quiz_accuracy": 0.2537358823199474,
+    "consistency_score": 0.15082846996178234,
+    "flashcard_mastery": 0.11176154110808532,
+    "task_completion": 0.06499133076353666
+  }
+}

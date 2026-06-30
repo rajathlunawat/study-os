@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.env
+*.db
+*.sqlite3
+
+# ML models (large binary files)
+ml/models/*.joblib
+
+# ML training data
+ml/data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

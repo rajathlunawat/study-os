@@ -1,0 +1,21 @@
+COURSE SYLLABUS: INTRODUCTION TO COMPUTER SCIENCE (CS101)
+
+1. Unit 1: Foundations of Computation
+   - What is an algorithm?
+   - Binary representation and logic gates
+   - Hardware vs Software architecture
+
+2. Unit 2: Introduction to Programming
+   - Variables, Data Types, and Operators
+   - Control flow (if statements, loops)
+   - Functions and modular design
+
+3. Unit 3: Data Structures
+   - Arrays and Strings
+   - Linked Lists
+   - Hash Tables and Dictionaries
+
+4. Unit 4: Advanced Topics
+   - Recursion
+   - Basic Sorting Algorithms (Bubble, Merge)
+   - Object-Oriented Programming (OOP) concepts
