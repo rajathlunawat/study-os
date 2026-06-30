@@ -245,10 +245,13 @@ async def chat(req: ChatRequest):
             traceback.print_exc()
             # Fall back to simple search
             relevant = simple_search(req.message, context)
+            import re
+            formatted = re.sub(r'[•\-\*]\s+', '\n- ', relevant)
+            formatted = re.sub(r'\s+(\d+\.\s)', r'\n\n\1', formatted)
             reply = (
                 f"## 📖 Key Points from Your Document\n\n"
                 f"Based on your question: *\"{req.message}\"*\n\n"
-                f"{relevant}"
+                f"{formatted}"
             )
     else:
         # No Gemini — use keyword search to find relevant text and format it nicely
