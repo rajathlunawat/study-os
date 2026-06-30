@@ -240,28 +240,17 @@ async def chat(req: ChatRequest):
             )
     else:
         # No Gemini — use keyword search to find relevant text and format it nicely
+        import re
         relevant = simple_search(req.message, context)
         
-        # Split into paragraphs and format as bullet points for readability
-        paragraphs = [p.strip() for p in relevant.split("\n\n") if p.strip()]
-        formatted_points = []
-        for para in paragraphs:
-            # Clean up and wrap each paragraph as a bullet
-            lines = [l.strip() for l in para.split("\n") if l.strip()]
-            for line in lines:
-                if line.startswith("•") or line.startswith("-") or line.startswith("*"):
-                    formatted_points.append(f"  {line}")
-                elif any(line.startswith(f"{i}.") for i in range(1, 20)):
-                    formatted_points.append(f"  {line}")
-                else:
-                    formatted_points.append(f"- {line}")
-        
-        bullet_text = "\n".join(formatted_points) if formatted_points else relevant
+        # Force newlines before bullets (•, -, *) and numbered lists (1., 2., etc.)
+        formatted = re.sub(r'([•\-\*] )', r'\n\n\1', relevant)
+        formatted = re.sub(r'(\s\d+\.\s)', r'\n\n\1', formatted)
         
         reply = (
             f"## 📖 Key Points from Your Document\n\n"
             f"Based on your question: *\"{req.message}\"*\n\n"
-            f"{bullet_text}"
+            f"{formatted}"
         )
 
     # Return which documents were used
