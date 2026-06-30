@@ -54,10 +54,10 @@ else:
     reason = "no google-generativeai package" if not GEMINI_AVAILABLE else "no GOOGLE_API_KEY env var"
     print(f"⚠️  Gemini not available ({reason}) — chat will use extracted text only")
 
-# ── In-memory document store ──────────────────────────────────────
-# Maps doc_id -> { metadata + extracted text }
-document_store: dict = {}
-
+from app.database import (
+    save_document, get_all_documents_metadata, get_document, 
+    get_all_documents_text, delete_document as db_delete_document
+)
 
 class ChatRequest(BaseModel):
     message: str
@@ -84,13 +84,26 @@ def get_combined_context(doc_ids: List[str], max_chars: int = 30000) -> str:
     """Combine text from selected documents, truncated to fit context window."""
     parts = []
     total = 0
-    for doc_id in doc_ids:
-        if doc_id in document_store:
-            text = document_store[doc_id]["text"]
+    
+    if not doc_ids:
+        docs = get_all_documents_text()
+        for doc in docs:
+            text = doc["text_content"]
             remaining = max_chars - total
             if remaining <= 0:
                 break
-            parts.append(f"--- Document: {document_store[doc_id]['title']} ---\n{text[:remaining]}")
+            parts.append(f"--- Document: {doc['title']} ---\n{text[:remaining]}")
+            total += len(text[:remaining])
+        return "\n\n".join(parts)
+        
+    for doc_id in doc_ids:
+        doc = get_document(doc_id)
+        if doc:
+            text = doc["text_content"]
+            remaining = max_chars - total
+            if remaining <= 0:
+                break
+            parts.append(f"--- Document: {doc['title']} ---\n{text[:remaining]}")
             total += len(text[:remaining])
     return "\n\n".join(parts)
 
@@ -135,7 +148,7 @@ def health_check():
         "status": "ok",
         "message": "StudyOS Backend is running",
         "gemini": "connected" if gemini_model else "not configured",
-        "documents_loaded": len(document_store),
+        "documents_loaded": len(get_all_documents_metadata()),
     }
 
 
@@ -158,46 +171,38 @@ async def upload_document(file: UploadFile = File(...), category: str = Form("no
         raise HTTPException(status_code=400, detail="Could not extract any text from this file.")
 
     doc_id = str(uuid.uuid4())
-    document_store[doc_id] = {
-        "id": doc_id,
-        "title": filename,
-        "file_type": file.content_type or "application/pdf",
-        "status": "Ready",
-        "uploaded_at": "Just now",
-        "text": text,
-        "category": category,
-    }
+    uploaded_at = "Just now"
+    file_type = file.content_type or "application/pdf"
+    
+    save_document(
+        doc_id=doc_id,
+        title=filename,
+        file_type=file_type,
+        status="Ready",
+        uploaded_at=uploaded_at,
+        category=category,
+        text_content=text
+    )
 
     print(f"📄 Uploaded '{filename}' — extracted {len(text)} characters")
 
     return {
         "id": doc_id,
         "title": filename,
-        "file_type": file.content_type or "application/pdf",
+        "file_type": file_type,
         "status": "Ready",
-        "uploaded_at": "Just now",
+        "uploaded_at": uploaded_at,
     }
 
 
 @app.get("/api/documents")
 async def get_documents():
-    # Return metadata only (not the full text)
-    return [
-        {
-            "id": d["id"],
-            "title": d["title"],
-            "file_type": d["file_type"],
-            "status": d["status"],
-            "uploaded_at": d["uploaded_at"],
-        }
-        for d in document_store.values()
-    ]
+    return get_all_documents_metadata()
 
 
 @app.delete("/api/documents/{doc_id}")
-async def delete_document(doc_id: str):
-    if doc_id in document_store:
-        del document_store[doc_id]
+async def delete_document_endpoint(doc_id: str):
+    db_delete_document(doc_id)
     return {"status": "deleted"}
 
 
@@ -215,11 +220,15 @@ async def chat(req: ChatRequest):
     # If Gemini is available, use it for real AI answers
     if gemini_model:
         system_prompt = (
-            "You are StudyOS, an AI study assistant. The student has uploaded study documents. "
+            "You are StudyOS, an AI study assistant. The student has uploaded study documents.\n"
             "Answer their questions ONLY using the document content provided below. "
-            "If the answer is not in the documents, say so clearly. "
-            "Format your answers with clear headings, bullet points, and structure. "
-            "Be thorough but concise.\n\n"
+            "If the answer is not in the documents, say so clearly.\n\n"
+            "**INSTRUCTIONS FOR SPECIAL COMMANDS:**\n"
+            "1. If the user asks for a 'quiz' or '/quiz', generate a 5-question multiple choice quiz based on the document. Put the Answer Key at the very bottom.\n"
+            "2. If the user asks for 'flashcards' or '/flashcards', generate 5 important flashcards formatted clearly as:\n"
+            "   **Front:** [Question/Term]\n"
+            "   **Back:** [Answer/Definition]\n\n"
+            "For all other questions, format your answers with clear headings, bullet points, and structure. Be thorough but concise.\n\n"
             "=== DOCUMENT CONTENT ===\n"
             f"{context}\n"
             "=== END DOCUMENT CONTENT ==="
@@ -261,7 +270,7 @@ async def chat(req: ChatRequest):
     # Return which documents were used
     sources_used = [
         doc_id for doc_id in req.document_ids
-        if doc_id in document_store
+        if get_document(doc_id) is not None
     ]
 
     return {
