@@ -237,6 +237,54 @@ body {
   border-bottom-left-radius: 4px;
 }
 
+/* ─── Markdown inside AI bubbles ─── */
+.message-row.ai .message-bubble h1,
+.message-row.ai .message-bubble h2,
+.message-row.ai .message-bubble h3 {
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.message-row.ai .message-bubble h2 {
+  font-size: 16px;
+}
+.message-row.ai .message-bubble h3 {
+  font-size: 15px;
+}
+.message-row.ai .message-bubble p {
+  margin: 0 0 10px 0;
+}
+.message-row.ai .message-bubble p:last-child {
+  margin-bottom: 0;
+}
+.message-row.ai .message-bubble ul,
+.message-row.ai .message-bubble ol {
+  margin: 4px 0 10px 0;
+  padding-left: 20px;
+}
+.message-row.ai .message-bubble li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+.message-row.ai .message-bubble strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.message-row.ai .message-bubble em {
+  color: var(--text-secondary);
+}
+.message-row.ai .message-bubble code {
+  background: rgba(0,0,0,0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.message-row.ai .message-bubble hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 12px 0;
+}
+
 /* ─── Input Area ─── */
 .input-area {
   padding: 24px;

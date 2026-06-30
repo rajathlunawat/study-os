@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api, Source, ChatResponse } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
 
 /* ─── Types ─── */
 interface Message {
@@ -230,7 +231,11 @@ export default function NotebookPage() {
               {messages.map(msg => (
                 <div key={msg.id} className={`message-row ${msg.role}`}>
                   <div className="message-bubble">
-                    {msg.content}
+                    {msg.role === 'ai' ? (
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               ))}

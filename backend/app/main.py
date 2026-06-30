@@ -234,12 +234,29 @@ async def chat(req: ChatRequest):
                 f"Here are the most relevant sections from your documents:\n\n{relevant}"
             )
     else:
-        # No Gemini — use keyword search to find relevant text
+        # No Gemini — use keyword search to find relevant text and format it nicely
         relevant = simple_search(req.message, context)
+        
+        # Split into paragraphs and format as bullet points for readability
+        paragraphs = [p.strip() for p in relevant.split("\n\n") if p.strip()]
+        formatted_points = []
+        for para in paragraphs:
+            # Clean up and wrap each paragraph as a bullet
+            lines = [l.strip() for l in para.split("\n") if l.strip()]
+            for line in lines:
+                if line.startswith("•") or line.startswith("-") or line.startswith("*"):
+                    formatted_points.append(f"  {line}")
+                elif any(line.startswith(f"{i}.") for i in range(1, 20)):
+                    formatted_points.append(f"  {line}")
+                else:
+                    formatted_points.append(f"- {line}")
+        
+        bullet_text = "\n".join(formatted_points) if formatted_points else relevant
+        
         reply = (
-            f"Here are the most relevant sections from your documents for \"{req.message}\":\n\n"
-            f"{relevant}\n\n"
-            f"---\n*To get AI-generated answers, set a GOOGLE_API_KEY environment variable on your backend.*"
+            f"## 📖 Key Points from Your Document\n\n"
+            f"Based on your question: *\"{req.message}\"*\n\n"
+            f"{bullet_text}"
         )
 
     # Return which documents were used
