@@ -5,7 +5,7 @@
    Set this env var in Vercel dashboard or .env.local.
    ═══════════════════════════════════════════════════════════════ */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000/api';
 
 /* ─── Types ─── */
 export interface Source {

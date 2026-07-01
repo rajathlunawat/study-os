@@ -1,21 +1,12 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-
-# Explicitly install CPU-only PyTorch to prevent Render out-of-memory build errors
-torch==2.1.2+cpu
-torchvision==0.16.2+cpu
-
+# ── Core ──
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
-sqlalchemy>=2.0.19
 pydantic>=2.1.1
-pydantic-settings>=2.0.2
-passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# ── PDF Parsing ──
 pymupdf>=1.22.5
-sentence-transformers>=2.2.2
-faiss-cpu>=1.7.4
-google-generativeai>=0.8.0
-scikit-learn>=1.3.0
-joblib>=1.3.0
-numpy>=1.24.0
-pandas>=2.0.0
+
+# ── Google Gemini (NEW SDK — supports AQ. auth keys) ──
+google-genai>=1.0.0
