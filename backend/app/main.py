@@ -23,8 +23,14 @@ import fitz  # PyMuPDF
 # ── Database ──────────────────────────────────────────────────────
 from app.database import (
     save_document, get_all_documents_metadata, get_document,
-    get_all_documents_text, delete_document as db_delete_document
+    get_all_documents_text, delete_document as db_delete_document,
+    get_user_stats, update_user_stats,
+    save_study_task, get_all_study_tasks, update_study_task as db_update_study_task
 )
+
+from app.services.prediction_service.service import PredictionService
+from app.services.planner_service.scheduler import build_schedule
+from datetime import datetime, timezone
 
 # ── Google GenAI (new SDK) ────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
@@ -57,6 +63,14 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     document_ids: List[str] = []
+
+class PlanRequest(BaseModel):
+    topic: str
+    target_date: str
+    hours_per_day: float = 2.0
+
+class TaskUpdate(BaseModel):
+    completed: bool
 
 
 # ── Helpers ───────────────────────────────────────────────────────
@@ -285,3 +299,46 @@ async def chat(req: ChatRequest):
         "reply": reply,
         "sources_used": sources_used,
     }
+
+@app.get("/api/predict")
+async def get_prediction():
+    result = PredictionService.predict_exam_readiness(db=None, user_id=1)
+    return result
+
+@app.post("/api/planner/generate")
+async def generate_planner(req: PlanRequest):
+    try:
+        target_date = datetime.fromisoformat(req.target_date.replace('Z', '+00:00'))
+    except ValueError:
+        raise HTTPException(400, "Invalid date format. Use ISO format.")
+        
+    start_date = datetime.now(timezone.utc)
+    topics = [t.strip() for t in req.topic.split(",")]
+    tasks = build_schedule(topics, start_date, target_date, req.hours_per_day)
+    
+    for t in tasks:
+        task_id = str(uuid.uuid4())
+        save_study_task(task_id, t.title, t.description, t.scheduled_date.isoformat(), False)
+        
+    return {"message": f"Generated {len(tasks)} study tasks."}
+
+@app.get("/api/planner/tasks")
+async def get_tasks():
+    return get_all_study_tasks()
+
+@app.patch("/api/planner/tasks/{task_id}")
+async def patch_task(task_id: str, update: TaskUpdate):
+    db_update_study_task(task_id, update.completed)
+    
+    stats = get_user_stats()
+    if stats:
+        new_completion = min(stats["task_completion"] + 0.05 if update.completed else stats["task_completion"], 1.0)
+        new_streak = stats["study_streak"] + 1 if update.completed else stats["study_streak"]
+        update_user_stats({"task_completion": new_completion, "study_streak": new_streak})
+        
+    return {"status": "updated"}
+
+@app.get("/api/stats")
+async def get_stats():
+    stats = get_user_stats()
+    return stats or {}

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api, Source, ChatResponse } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
 
 /* ─── Types ─── */
 interface Message {
@@ -145,9 +146,23 @@ export default function NotebookPage() {
             className="upload-button"
             onClick={handleUploadClick}
             disabled={isUploading}
+            style={{ marginBottom: '12px' }}
           >
             {isUploading ? '⏳ Uploading...' : '⊕ Add Source'}
           </button>
+          
+          <Link href="/dashboard" style={{ display: 'block', textDecoration: 'none' }}>
+            <button
+              className="upload-button"
+              style={{
+                background: 'transparent',
+                border: '1px solid #2a2a35',
+                color: 'var(--text-secondary)'
+              }}
+            >
+              📊 View Dashboard
+            </button>
+          </Link>
 
           {uploadError && (
             <p style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '12px' }}>

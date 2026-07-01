@@ -13,14 +13,8 @@ three dimensions:
 This file normalizes all these metrics into a 0.0 to 1.0 scale.
 """
 
+from app.database import get_user_stats
 from dataclasses import dataclass
-from typing import Dict, Any
-
-from sqlalchemy.orm import Session
-
-from app.services.progress_service import ProgressAnalytics, ProgressTracker
-# from app.services.syllabus_service import SyllabusService # (Conceptual import for coverage)
-
 
 @dataclass
 class ReadinessFeatures:
@@ -41,30 +35,29 @@ class FeatureExtractor:
     """
 
     @staticmethod
-    def extract_features(db: Session, user_id: int, document_id: int | None = None) -> ReadinessFeatures:
+    def extract_features(db=None, user_id: int = 1, document_id: int | None = None) -> ReadinessFeatures:
         """
         Pull metrics across all services and normalize them to [0, 1].
         """
-        # 1. Knowledge Metrics
-        raw_accuracy = ProgressAnalytics.calculate_quiz_accuracy(db, user_id)
-        norm_accuracy = min(max(raw_accuracy / 100.0, 0.0), 1.0)
+        stats = get_user_stats()
+        if not stats:
+            stats = {
+                "quiz_accuracy": 0.5,
+                "flashcard_mastery": 0.5,
+                "task_completion": 0.5,
+                "consistency_score": 0.5,
+                "study_streak": 0
+            }
 
-        flashcard_stats = ProgressAnalytics.get_flashcard_mastery(db, user_id)
-        raw_mastery = flashcard_stats.get("mastery_rate", 0.0)
-        norm_mastery = min(max(raw_mastery / 100.0, 0.0), 1.0)
-
-        # 2. Consistency Metrics
-        task_stats = ProgressAnalytics.get_task_completion_rate(db, user_id)
-        raw_completion = task_stats.get("completion_rate", 0.0)
-        norm_completion = min(max(raw_completion / 100.0, 0.0), 1.0)
-
+        norm_accuracy = min(max(stats["quiz_accuracy"], 0.0), 1.0)
+        norm_mastery = min(max(stats["flashcard_mastery"], 0.0), 1.0)
+        norm_completion = min(max(stats["task_completion"], 0.0), 1.0)
+        
         # We assume a 14-day streak is "perfect" consistency (1.0)
-        streak = ProgressTracker.log_study_activity(db, user_id)
-        norm_streak = min(streak / 14.0, 1.0)
+        norm_streak = min(stats["study_streak"] / 14.0, 1.0)
+        norm_consistency = max(norm_streak, stats["consistency_score"])
 
         # 3. Coverage Metric
-        # In a full implementation, we'd call SyllabusService to get the exact 
-        # coverage for the specific document_id (if provided).
         # For this scaffold, we simulate a 65% coverage rate.
         norm_coverage = 0.65 
 
@@ -72,6 +65,6 @@ class FeatureExtractor:
             quiz_accuracy=norm_accuracy,
             flashcard_mastery=norm_mastery,
             task_completion=norm_completion,
-            consistency_score=norm_streak,
+            consistency_score=norm_consistency,
             syllabus_coverage=norm_coverage,
         )
