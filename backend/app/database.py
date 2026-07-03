@@ -46,6 +46,7 @@ def init_db():
             uploaded_at TEXT NOT NULL,
             category TEXT,
             text_content TEXT NOT NULL,
+            file_url TEXT,
             FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
         )
     ''')
@@ -194,20 +195,20 @@ def get_study_tasks(subject_id: str):
     return [dict(row) for row in rows]
 
 # ── DOCUMENTS ──
-def save_document(doc_id: str, subject_id: str, title: str, file_type: str, status: str, uploaded_at: str, category: str, text_content: str):
+def save_document(doc_id: str, subject_id: str, title: str, file_type: str, status: str, uploaded_at: str, category: str, text_content: str, file_url: str = None):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO documents (id, subject_id, title, file_type, status, uploaded_at, category, text_content)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (doc_id, subject_id, title, file_type, status, uploaded_at, category, text_content))
+        INSERT INTO documents (id, subject_id, title, file_type, status, uploaded_at, category, text_content, file_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (doc_id, subject_id, title, file_type, status, uploaded_at, category, text_content, file_url))
     conn.commit()
     conn.close()
 
 def get_documents_metadata(subject_id: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, subject_id, title, file_type, status, uploaded_at FROM documents WHERE subject_id = ?', (subject_id,))
+    cursor.execute('SELECT id, subject_id, title, file_type, status, uploaded_at, file_url FROM documents WHERE subject_id = ?', (subject_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

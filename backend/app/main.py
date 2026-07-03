@@ -324,6 +324,20 @@ async def upload_document(
 
     doc_id = str(uuid.uuid4())
     file_type = file.content_type or "application/pdf"
+    
+    # Upload to Cloudinary
+    file_url = None
+    try:
+        if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+            upload_result = cloudinary.uploader.upload(
+                file_bytes, 
+                resource_type="raw", 
+                public_id=f"studyos/{user_id}/{subject_id}/{filename}",
+                flags="attachment" # forces download
+            )
+            file_url = upload_result.get('secure_url')
+    except Exception as e:
+        print(f"Cloudinary upload failed: {e}")
 
     save_document(
         doc_id=doc_id,
@@ -333,7 +347,8 @@ async def upload_document(
         status="Ready",
         uploaded_at="Just now",
         category=category,
-        text_content=text
+        text_content=text,
+        file_url=file_url
     )
 
     print(f"📄 Uploaded '{filename}' for subject '{subject_id}' — {len(text)} chars")
@@ -450,7 +465,17 @@ async def get_stats(subject_id: str, user_id: str = Depends(get_current_user)):
     return stats or {}
 
 # --- YouTube & Library ---
-import yt_dlp
+
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+cloudinary.config(
+  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+  api_key = os.environ.get('CLOUDINARY_API_KEY'),
+  api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+)
+\nimport yt_dlp
 import requests
 
 @app.get("/api/youtube/search")

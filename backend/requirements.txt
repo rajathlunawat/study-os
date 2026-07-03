@@ -21,3 +21,6 @@ requests>=2.31.0
 # ── Auth ──
 pyjwt>=2.8.0
 passlib[bcrypt]>=1.7.4
+
+# ── Storage ──
+cloudinary>=1.41.0
