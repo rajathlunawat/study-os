@@ -155,9 +155,11 @@ export default function NotebookPage() {
             <button
               className="upload-button"
               style={{
-                background: 'transparent',
-                border: '1px solid #2a2a35',
-                color: 'var(--text-secondary)'
+                background: '#FACC15',
+                border: 'none',
+                color: '#0d0d0d',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 14px rgba(250, 204, 21, 0.2)'
               }}
             >
               📊 View Dashboard

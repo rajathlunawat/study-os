@@ -28,8 +28,9 @@ from app.database import (
     save_study_task, get_all_study_tasks, update_study_task as db_update_study_task
 )
 
-from app.services.prediction_service.service import PredictionService
-from app.services.planner_service.scheduler import build_schedule
+from app.services.prediction_service.model import ReadinessModel
+from app.services.prediction_service.features import FeatureExtractor
+from app.services.planner_service.scheduler import build_schedule as _build_schedule
 from datetime import datetime, timezone
 
 # ── Google GenAI (new SDK) ────────────────────────────────────────
@@ -302,7 +303,8 @@ async def chat(req: ChatRequest):
 
 @app.get("/api/predict")
 async def get_prediction():
-    result = PredictionService.predict_exam_readiness(db=None, user_id=1)
+    features = FeatureExtractor.extract_features()
+    result = ReadinessModel.predict(features)
     return result
 
 @app.post("/api/planner/generate")
@@ -314,7 +316,7 @@ async def generate_planner(req: PlanRequest):
         
     start_date = datetime.now(timezone.utc)
     topics = [t.strip() for t in req.topic.split(",")]
-    tasks = build_schedule(topics, start_date, target_date, req.hours_per_day)
+    tasks = _build_schedule(topics, start_date, target_date, req.hours_per_day)
     
     for t in tasks:
         task_id = str(uuid.uuid4())
