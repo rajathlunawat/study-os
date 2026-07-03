@@ -3,44 +3,30 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 import styles from '../auth.module.css';
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setError('');
-
-    if (!username || !password || !confirmPassword) {
-      setError('Please fill in all fields.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const response = await api.register(username, password);
-      localStorage.setItem('studyos_token', response.token);
-      localStorage.setItem('studyos_user_id', response.user_id);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const token = await user.getIdToken();
+      
+      // Save Firebase ID token and User UID
+      localStorage.setItem('studyos_token', token);
+      localStorage.setItem('studyos_user_id', user.uid);
+      
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.message || 'Failed to register. Please try again.');
+      setError(err?.message || 'Failed to login with Google.');
     } finally {
       setIsLoading(false);
     }
@@ -53,62 +39,24 @@ export default function RegisterPage() {
       
       <div className={styles.authCard}>
         <div className={styles.authHeader}>
-          <h1 className={styles.title}>Create Account</h1>
-          <p className={styles.subtitle}>Join StudyOS to level up your learning.</p>
+          <h1 className={styles.title}>Welcome to StudyOS</h1>
+          <p className={styles.subtitle}>Sign in with Google to continue.</p>
         </div>
 
         {error && <div className={styles.errorText}>{error}</div>}
 
-        <form onSubmit={handleRegister}>
-          <div className={styles.formGroup}>
-            <label htmlFor="username" className={styles.label}>Username</label>
-            <input
-              id="username"
-              type="text"
-              className={styles.input}
-              placeholder="Choose a username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="password" className={styles.label}>Password</label>
-            <input
-              id="password"
-              type="password"
-              className={styles.input}
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="confirmPassword" className={styles.label}>Confirm Password</label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className={styles.input}
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-
-          <button type="submit" className={styles.submitBtn} disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Sign Up'}
-          </button>
-        </form>
+        <button 
+          onClick={handleGoogleLogin} 
+          className={styles.submitBtn} 
+          disabled={isLoading}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', backgroundColor: '#ffffff', color: '#000000' }}
+        >
+          <img src="https://www.google.com/favicon.ico" alt="Google" width="20" height="20" />
+          {isLoading ? 'Signing in...' : 'Sign in with Google'}
+        </button>
 
         <div className={styles.footer}>
-          Already have an account?{' '}
-          <Link href="/login" className={styles.link}>
-            Sign in
-          </Link>
+          By continuing, you agree to our Terms of Service.
         </div>
       </div>
     </div>
