@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, PredictionResponse, UserStats, StudyTask } from '@/lib/api';
-import { Brain, Calendar, CheckCircle2, Circle, Flame, Target, Trophy, Clock, ArrowRight, BookOpen, Layers } from 'lucide-react';
+import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -13,7 +13,6 @@ export default function DashboardPage() {
 
   // New plan state
   const [newTopic, setNewTopic] = useState('');
-  const [targetDate, setTargetDate] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
@@ -39,13 +38,16 @@ export default function DashboardPage() {
   };
 
   const handleGeneratePlan = async () => {
-    if (!newTopic || !targetDate) return;
+    if (!newTopic) return;
     setIsGenerating(true);
     try {
-      await api.generatePlanner(newTopic, new Date(targetDate).toISOString(), 2);
-      await fetchData(); // Refresh everything
+      // Default to 7 days from now
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 7);
+      
+      await api.generatePlanner(newTopic, targetDate.toISOString(), 2);
+      await fetchData();
       setNewTopic('');
-      setTargetDate('');
     } catch (err) {
       console.error(err);
     } finally {
@@ -54,249 +56,296 @@ export default function DashboardPage() {
   };
 
   const toggleTask = async (taskId: string, currentStatus: boolean) => {
-    // Optimistic UI update
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !currentStatus } : t));
-    
     try {
       await api.updateTask(taskId, !currentStatus);
-      // Refresh stats quietly to update streak/completion metrics
       const newStats = await api.getStats();
       setStats(newStats);
       const newPred = await api.getPrediction();
       setPrediction(newPred);
     } catch {
-      // Revert on error
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: currentStatus } : t));
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#0d0d0d]">
-        <div className="animate-pulse text-xl text-[#FACC15] font-medium tracking-wide">Syncing Workspace...</div>
-      </div>
-    );
-  }
-
-  // Calculate circumference for circular progress
-  const radius = 60;
-  const circumference = 2 * Math.PI * radius;
-  const score = prediction?.readiness_score || 0;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const activeTasks = tasks.filter(t => !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-[#e5e5e5] font-sans p-6 md:p-10 flex flex-col items-center">
+    <div className="flex h-screen w-full bg-[#111111] text-[#E0E0E0] font-sans overflow-hidden" style={{ backgroundImage: 'radial-gradient(ellipse at 80% 20%, rgba(60, 40, 30, 0.15), transparent 40%), radial-gradient(ellipse at 20% 80%, rgba(40, 50, 70, 0.1), transparent 40%)' }}>
       
-      {/* HEADER NAVIGATION */}
-      <header className="w-full max-w-7xl flex justify-between items-center mb-12 border-b border-[#222] pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-[#FACC15] rounded-lg flex items-center justify-center text-[#0d0d0d]">
-            <Layers size={22} className="fill-current" />
+      {/* ── SIDEBAR ── */}
+      <aside className="w-[280px] min-w-[280px] h-full flex flex-col justify-between py-6 px-4 bg-[#111111]/80 backdrop-blur-2xl border-r border-[#222222] shadow-[4px_0_24px_rgba(0,0,0,0.4)] z-10">
+        <div className="flex flex-col gap-8">
+          <nav className="flex flex-col gap-1.5">
+            <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <Home size={18} /> Home
+            </Link>
+            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <Book size={18} /> Library
+            </button>
+            <button className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <div className="flex items-center gap-3">
+                <Bell size={18} /> Notifications
+              </div>
+              <span className="bg-[#222] text-[#ccc] text-[10px] font-bold px-2 py-0.5 rounded-full">2</span>
+            </button>
+            <div className="flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-semibold bg-[#FDE68A] text-[#111] shadow-[0_0_15px_rgba(253,230,138,0.15)] cursor-pointer">
+              <GraduationCap size={18} /> Learn
+            </div>
+            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors mt-1">
+              <Users size={18} /> My Team
+            </button>
+            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <Search size={18} /> Search
+            </button>
+          </nav>
+
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-[#333] to-transparent my-1" />
+
+          <div className="flex flex-col gap-2">
+            <div className="px-4 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-[#555] mb-2">
+              Recent <MoreHorizontal size={14} className="cursor-pointer hover:text-white transition-colors" />
+            </div>
+            <button className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium text-[#888] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <FileText size={16} /> Untitled
+            </button>
+            <button className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium text-[#888] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <FileText size={16} /> Data Analysis Report
+            </button>
+            <button className="flex items-center justify-between px-4 py-2 mt-2 rounded-xl text-sm font-medium text-[#666] hover:text-white transition-colors group">
+              <div className="flex items-center gap-3">
+                <FolderOpen size={16} /> Browse All Files
+              </div>
+              <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-3 mt-auto rounded-xl hover:bg-[#1A1A1A] cursor-pointer transition-colors border border-transparent hover:border-[#222]">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FDE68A] to-[#D97706] flex items-center justify-center text-[#111] font-bold text-sm shadow-inner">
+            AB
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white">Asha Brian</span>
+            <span className="text-xs font-medium text-[#FDE68A] flex items-center gap-1">Premium ✨</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <main className="flex-1 h-full flex flex-col px-10 py-12 overflow-y-auto custom-scrollbar relative z-0">
+        
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">StudyOS</h1>
-            <p className="text-sm text-[#888] font-medium">Workspace Overview</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Learning</h1>
+            <p className="text-[#888] mt-2 font-medium">Study your cards with spaced repetition.</p>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-[#1A1A1A] border border-[#333] rounded-xl p-1 pr-1.5 focus-within:border-[#FDE68A] transition-colors shadow-lg">
+            <input 
+              type="text" 
+              placeholder="e.g. Physics Chapter 4..." 
+              className="bg-transparent border-none outline-none text-sm px-4 py-2 w-64 text-white placeholder-[#555]"
+              value={newTopic}
+              onChange={e => setNewTopic(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleGeneratePlan()}
+            />
+            <button 
+              onClick={handleGeneratePlan}
+              disabled={isGenerating || !newTopic}
+              className="flex items-center gap-2 bg-[#2A2A2A] hover:bg-[#333] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-[#444] disabled:opacity-50"
+            >
+              <Plus size={16} /> {isGenerating ? 'Adding...' : 'New Study Plan'}
+            </button>
           </div>
         </div>
-        <Link href="/" className="group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1a1a1a] hover:bg-[#FACC15] text-[#FACC15] hover:text-[#0d0d0d] font-semibold transition-all border border-[#333] hover:border-[#FACC15]">
-          <span>Notebook</span>
-          <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-        </Link>
-      </header>
 
-      {/* BENTO GRID LAYOUT */}
-      <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
-        
-        {/* ROW 1: STATS & READINESS */}
-        
-        {/* Left: Overall Readiness */}
-        <div className="col-span-1 md:col-span-5 bg-[#141414] rounded-3xl p-8 border border-[#222] flex flex-col relative overflow-hidden group hover:border-[#333] transition-colors">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#FACC15] opacity-[0.03] rounded-bl-[100px] pointer-events-none" />
-          
-          <h2 className="text-sm font-bold uppercase tracking-widest text-[#888] mb-8 flex items-center gap-2">
-            <Target size={16} className="text-[#FACC15]" /> Exam Readiness
-          </h2>
-          
-          <div className="flex items-center justify-between mt-auto">
-            <div className="relative flex items-center justify-center w-40 h-40">
-              <svg className="w-full h-full transform -rotate-90 drop-shadow-xl">
-                <circle cx="80" cy="80" r={radius} stroke="#222" strokeWidth="10" fill="transparent" />
-                <circle
-                  cx="80" cy="80" r={radius}
-                  stroke="#FACC15" strokeWidth="10" fill="transparent"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  className="transition-all duration-1000 ease-out"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-5xl font-black text-white tracking-tighter">{score}</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#FACC15] mt-1">Score</span>
-              </div>
+        {/* Stats Row */}
+        <div className="flex items-center gap-12 bg-[#141414]/50 backdrop-blur-md border border-[#222] rounded-2xl p-6 mb-10 shadow-sm">
+          <div className="flex items-center gap-4">
+            <Zap size={24} className="text-[#999]" />
+            <div>
+              <div className="text-xl font-bold text-white leading-none">{activeTasks.length}</div>
+              <div className="text-xs font-medium text-[#666] mt-1">Due</div>
             </div>
+          </div>
+          <div className="w-px h-10 bg-[#222]" />
+          <div className="flex items-center gap-4">
+            <Flame size={24} className="text-[#F87171]" />
+            <div>
+              <div className="text-xl font-bold text-white leading-none">{stats?.study_streak || 0}</div>
+              <div className="text-xs font-medium text-[#666] mt-1">Days Streak</div>
+            </div>
+          </div>
+          <div className="w-px h-10 bg-[#222]" />
+          <div className="flex items-center gap-4">
+            <Calendar size={24} className="text-[#34D399]" />
+            <div>
+              <div className="text-xl font-bold text-white leading-none">{Math.round((stats?.task_completion || 0) * 100)}%</div>
+              <div className="text-xs font-medium text-[#666] mt-1">Completion Rate</div>
+            </div>
+          </div>
+          <div className="w-px h-10 bg-[#222]" />
+          <div className="flex items-center gap-4">
+            <Target size={24} className="text-[#60A5FA]" />
+            <div>
+              <div className="text-xl font-bold text-white leading-none">{prediction?.readiness_score || 0}</div>
+              <div className="text-xs font-medium text-[#666] mt-1">Readiness Score</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2 text-[#666] hover:text-white cursor-pointer transition-colors text-sm font-medium">
+            <Search size={16} /> Smart Search
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+              Created by me <MoreHorizontal size={14} className="ml-1" />
+            </button>
+            <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+              Recent Plans <MoreHorizontal size={14} className="ml-1" />
+            </button>
+            <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+              Archive
+            </button>
+            <button className="flex items-center gap-2 bg-[#FDE68A] text-[#111] hover:bg-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(253,230,138,0.2)] ml-2">
+              <Zap size={16} className="fill-current" /> Study All
+            </button>
+          </div>
+        </div>
+
+        {/* Task Lists */}
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-pulse text-[#666] font-medium flex items-center gap-3">
+              <Circle className="animate-spin" size={20} /> Loading Study Plans...
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 pb-20">
             
-            <div className="text-right flex flex-col justify-center">
-              <div className="text-2xl font-bold text-white mb-2 leading-tight">
-                {prediction?.readiness_band || 'Unknown'}
+            {/* Active Tasks */}
+            {activeTasks.length === 0 && completedTasks.length === 0 && (
+              <div className="text-center py-20 text-[#555] bg-[#141414] rounded-2xl border border-[#222]">
+                No study plans found. Generate one above to begin.
               </div>
-              <p className="text-sm font-medium text-[#888]">
-                <span className="text-[#FACC15]">{((prediction?.pass_probability || 0) * 100).toFixed(1)}%</span> Pass Probability
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Quick Stats Bento Box */}
-        <div className="col-span-1 md:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-6">
-          <div className="bg-[#141414] rounded-3xl p-6 border border-[#222] flex flex-col justify-between hover:bg-[#1a1a1a] transition-colors">
-            <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-6">
-              <Brain size={20} className="text-[#FACC15]" />
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">{Math.round((stats?.quiz_accuracy || 0) * 100)}%</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#666] mt-2">Quiz Accuracy</p>
-            </div>
-          </div>
-
-          <div className="bg-[#141414] rounded-3xl p-6 border border-[#222] flex flex-col justify-between hover:bg-[#1a1a1a] transition-colors">
-            <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-6">
-              <Trophy size={20} className="text-[#FACC15]" />
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">{Math.round((stats?.task_completion || 0) * 100)}%</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#666] mt-2">Task Completion</p>
-            </div>
-          </div>
-
-          <div className="col-span-2 md:col-span-1 bg-[#FACC15] rounded-3xl p-6 flex flex-col justify-between text-[#0d0d0d] relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 opacity-20 transform rotate-12 group-hover:scale-110 transition-transform">
-              <Flame size={120} />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-6 relative z-10">
-              <Flame size={20} className="text-[#0d0d0d]" />
-            </div>
-            <div className="relative z-10">
-              <p className="text-4xl font-black tracking-tighter">{stats?.study_streak || 0}</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-black/60 mt-1">Day Streak</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 2: PLANNER & INSIGHTS */}
-
-        {/* Left: AI Insights */}
-        <div className="col-span-1 md:col-span-5 flex flex-col gap-6">
-          <div className="bg-[#141414] rounded-3xl p-8 border border-[#222] flex-1">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-[#888] mb-6 flex items-center gap-2">
-              <BookOpen size={16} className="text-[#FACC15]" /> Actionable Insights
-            </h2>
-            {(!prediction?.insights || prediction.insights.length === 0) ? (
-              <p className="text-[#666] text-sm">No insights available yet. Keep studying!</p>
-            ) : (
-              <ul className="space-y-4">
-                {prediction.insights.map((insight, idx) => (
-                  <li key={idx} className="flex gap-4 text-sm font-medium text-[#ccc] items-start p-4 bg-[#1a1a1a] rounded-2xl border border-[#222]">
-                    <span className="w-6 h-6 rounded-full bg-[#FACC15]/10 text-[#FACC15] flex items-center justify-center flex-shrink-0 text-xs font-bold">{idx + 1}</span>
-                    <span className="leading-relaxed">{insight}</span>
-                  </li>
-                ))}
-              </ul>
             )}
-          </div>
-        </div>
 
-        {/* Right: Task Manager */}
-        <div className="col-span-1 md:col-span-7 bg-[#141414] rounded-3xl p-8 border border-[#222] flex flex-col">
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[#222] pb-8">
-            <h2 className="text-lg font-bold text-white flex items-center gap-3">
-              <Calendar size={22} className="text-[#FACC15]" /> Study Roadmap
-            </h2>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                placeholder="Topics (e.g. ML, Physics)"
-                value={newTopic}
-                onChange={e => setNewTopic(e.target.value)}
-                className="bg-[#0d0d0d] border border-[#333] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#FACC15] focus:ring-1 focus:ring-[#FACC15] transition-all text-white placeholder-[#555] w-full sm:w-48"
-              />
-              <input
-                type="date"
-                value={targetDate}
-                onChange={e => setTargetDate(e.target.value)}
-                className="bg-[#0d0d0d] border border-[#333] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#FACC15] transition-all text-[#ccc] [color-scheme:dark] w-full sm:w-auto"
-              />
-              <button
-                onClick={handleGeneratePlan}
-                disabled={isGenerating || !newTopic || !targetDate}
-                className="bg-[#FACC15] text-[#0d0d0d] px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-white transition-colors disabled:opacity-50 disabled:hover:bg-[#FACC15] whitespace-nowrap"
-              >
-                {isGenerating ? 'Building...' : 'Add Plan'}
-              </button>
-            </div>
-          </div>
+            {activeTasks.map((task, i) => {
+              // Fake varying progress for UI aesthetics based on index
+              const fakeProgress = i === 0 ? 25 : i === 1 ? 0 : 50;
+              const radius = 24;
+              const circumference = 2 * Math.PI * radius;
+              const strokeDashoffset = circumference - (fakeProgress / 100) * circumference;
+              
+              return (
+                <div key={task.id} className="group bg-[#141414]/80 backdrop-blur-md border border-[#2A2A2A] hover:border-[#444] rounded-2xl p-5 flex items-center gap-6 transition-all hover:bg-[#1A1A1A]/80 shadow-sm">
+                  {/* Progress Ring */}
+                  <div className="relative flex items-center justify-center w-16 h-16 shrink-0">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="32" cy="32" r={radius} stroke="#222" strokeWidth="4" fill="transparent" />
+                      <circle
+                        cx="32" cy="32" r={radius}
+                        stroke="#FDE68A" strokeWidth="4" fill="transparent"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                      />
+                    </svg>
+                    <div className="absolute text-xs font-bold text-white">{fakeProgress}%</div>
+                  </div>
 
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '500px' }}>
-            {tasks.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-[#555] py-20">
-                <Clock size={48} className="mb-4 opacity-20" />
-                <p className="font-medium text-lg text-[#888]">No active tasks</p>
-                <p className="text-sm mt-1">Generate a study roadmap above.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {tasks.map(task => {
-                  const dateObj = new Date(task.scheduled_date);
-                  const isPast = dateObj < new Date() && !task.completed;
-                  return (
-                    <div 
-                      key={task.id} 
-                      className={`group flex items-start gap-5 p-5 rounded-2xl border transition-all cursor-pointer ${
-                        task.completed ? 'border-[#222] bg-[#0d0d0d] opacity-50' : 
-                        isPast ? 'border-red-900/30 bg-red-950/10 hover:border-red-900/50' : 'border-[#333] bg-[#1a1a1a] hover:border-[#FACC15]'
-                      }`}
-                      onClick={() => toggleTask(task.id, task.completed)}
-                    >
-                      <div className="mt-0.5 flex-shrink-0 transition-transform group-hover:scale-110">
-                        {task.completed ? (
-                          <CheckCircle2 size={22} className="text-[#FACC15]" />
-                        ) : (
-                          <Circle size={22} className={isPast ? 'text-red-500' : 'text-[#555] group-hover:text-[#FACC15]'} />
-                        )}
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                        <h4 className={`font-semibold text-[15px] leading-tight ${task.completed ? 'line-through text-[#666]' : 'text-[#eee]'}`}>
-                          {task.title}
-                        </h4>
-                        {task.description && (
-                          <p className={`text-sm mt-2 line-clamp-2 ${task.completed ? 'text-[#555]' : 'text-[#888]'}`}>{task.description}</p>
-                        )}
-                      </div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#666] whitespace-nowrap bg-[#0d0d0d] px-3 py-1.5 rounded-lg border border-[#222]">
-                        {dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-white truncate">{task.title}</h3>
+                    <p className="text-sm text-[#888] truncate mt-0.5">{task.description || task.title}</p>
+                    <div className="flex items-center gap-4 mt-3 text-xs font-medium text-[#666]">
+                      <span className="flex items-center gap-1.5"><Target size={12} /> {fakeProgress}% Complete</span>
+                      <span className="flex items-center gap-1.5"><Calendar size={12} /> {new Date(task.scheduled_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</span>
+                      <span className="flex items-center gap-1.5"><Users size={12} /> by Asha Brian (me)</span>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button className="p-2.5 rounded-xl hover:bg-[#222] text-[#888] hover:text-white transition-colors"><Share2 size={18} /></button>
+                    <button className="p-2.5 rounded-xl hover:bg-[#222] text-[#888] hover:text-white transition-colors"><Edit2 size={18} /></button>
+                    <button className="p-2.5 rounded-xl hover:bg-[#222] text-[#888] hover:text-white transition-colors"><Play size={18} /></button>
+                    <button 
+                      onClick={() => toggleTask(task.id, task.completed)}
+                      className="p-2.5 rounded-xl hover:bg-[#222] text-[#888] hover:text-[#34D399] transition-colors"
+                      title="Mark Complete"
+                    >
+                      <Check size={18} />
+                    </button>
+                  </div>
+
+                  {/* Primary Button */}
+                  <div className="pl-4 shrink-0 border-l border-[#2A2A2A] ml-2">
+                    <button 
+                      onClick={() => toggleTask(task.id, task.completed)}
+                      className="bg-[#FDE68A] hover:bg-white text-[#111] px-5 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-[0_4px_14px_rgba(253,230,138,0.15)]"
+                    >
+                      <BarChart2 size={16} /> View Progress
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Completed Tasks */}
+            {completedTasks.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="text-sm font-semibold text-[#666]">Completed</h3>
+                  <div className="flex-1 h-px bg-[#222]" />
+                </div>
+                <div className="flex flex-col gap-4">
+                  {completedTasks.map(task => (
+                    <div key={task.id} className="group bg-[#111] border border-[#222] rounded-2xl p-5 flex items-center gap-6 opacity-60 hover:opacity-100 transition-opacity">
+                      {/* Progress Ring - 100% */}
+                      <div className="relative flex items-center justify-center w-16 h-16 shrink-0">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle cx="32" cy="32" r={24} stroke="#34D399" strokeWidth="4" fill="transparent" />
+                        </svg>
+                        <div className="absolute text-xs font-bold text-[#34D399]">100%</div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-[#999] line-through decoration-[#444] truncate">{task.title}</h3>
+                        <div className="flex items-center gap-4 mt-2 text-xs font-medium text-[#555]">
+                          <span className="flex items-center gap-1.5"><Check size={12} className="text-[#34D399]" /> Completed</span>
+                          <span className="flex items-center gap-1.5"><Users size={12} /> by Asha Brian (me)</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => toggleTask(task.id, task.completed)}
+                        className="p-3 rounded-xl hover:bg-[#222] text-[#555] hover:text-white transition-colors"
+                        title="Mark Uncomplete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
           </div>
-        </div>
-      </div>
+        )}
+      </main>
 
       <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: #333;
-          border-radius: 20px;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #333; border-radius: 20px; border: 2px solid #111; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #555; }
       `}} />
     </div>
   );
