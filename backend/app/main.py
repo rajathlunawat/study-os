@@ -237,6 +237,12 @@ async def add_subject(req: SubjectRequest):
     subject_id = create_subject(req.name)
     return {"id": subject_id, "name": req.name}
 
+@app.delete("/api/subjects/{subject_id}")
+async def delete_subject_endpoint(subject_id: str):
+    from app.database import delete_subject as db_delete_subject
+    db_delete_subject(subject_id)
+    return {"status": "deleted"}
+
 # --- Documents ---
 @app.post("/api/documents/upload")
 async def upload_document(

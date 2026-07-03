@@ -8,6 +8,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "studyos.db")
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 def init_db():
@@ -103,6 +104,13 @@ def get_all_subjects():
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+def delete_subject(subject_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
+    conn.commit()
+    conn.close()
 
 # ── STATS ──
 def get_user_stats(subject_id: str):

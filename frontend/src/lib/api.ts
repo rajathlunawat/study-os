@@ -118,6 +118,11 @@ export const api = {
     });
   },
 
+  /** Delete a subject */
+  deleteSubject: (id: string): Promise<void> => {
+    return apiFetch<void>(`/subjects/${id}`, { method: 'DELETE' });
+  },
+
   /** Upload a document (PDF, TXT, DOCX) to a subject */
   uploadDocument: async (file: File, category: string, subjectId: string): Promise<Source> => {
     const formData = new FormData();

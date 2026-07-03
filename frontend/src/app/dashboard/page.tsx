@@ -93,6 +93,25 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteSubject = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // prevent clicking the subject
+    if (!confirm('Are you sure you want to delete this subject? All notes, tasks, and memory will be lost.')) return;
+    
+    try {
+      await api.deleteSubject(id);
+      setSubjects(prev => prev.filter(s => s.id !== id));
+      if (selectedSubjectId === id) {
+        setSelectedSubjectId(null);
+        setPrediction(null);
+        setStats(null);
+        setTasks([]);
+        localStorage.removeItem('studyos_subject_id');
+      }
+    } catch (err: any) {
+      alert('Failed to delete subject: ' + err?.message);
+    }
+  };
+
   const handleGeneratePlan = async () => {
     if (!newTopic || !selectedSubjectId) return;
     setIsGenerating(true);
@@ -168,22 +187,22 @@ export default function DashboardPage() {
             <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Home size={18} /> Home
             </Link>
-            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+            <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Book size={18} /> Library
             </button>
-            <button className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+            <button onClick={() => alert('Feature coming soon!')} className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <div className="flex items-center gap-3">
                 <Bell size={18} /> Notifications
               </div>
               <span className="bg-[#222] text-[#ccc] text-[10px] font-bold px-2 py-0.5 rounded-full">2</span>
             </button>
-            <div className="flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-semibold bg-[#FDE68A] text-[#111] shadow-[0_0_15px_rgba(253,230,138,0.15)] cursor-pointer">
+            <div onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-semibold bg-[#FDE68A] text-[#111] shadow-[0_0_15px_rgba(253,230,138,0.15)] cursor-pointer">
               <GraduationCap size={18} /> Learn
             </div>
-            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors mt-1">
+            <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors mt-1">
               <Users size={18} /> My Team
             </button>
-            <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+            <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Search size={18} /> Search
             </button>
           </nav>
@@ -212,14 +231,23 @@ export default function DashboardPage() {
 
             <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto custom-scrollbar">
               {subjects.map(subject => (
-                <button 
+                <div 
                   key={subject.id}
                   onClick={() => setSelectedSubjectId(subject.id)}
-                  className={`flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${selectedSubjectId === subject.id ? 'bg-[#2A2A2A] text-white' : 'text-[#888] hover:text-white hover:bg-[#1A1A1A]'}`}
+                  className={`group flex items-center justify-between px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${selectedSubjectId === subject.id ? 'bg-[#2A2A2A] text-white' : 'text-[#888] hover:text-white hover:bg-[#1A1A1A]'}`}
                 >
-                  <FileText size={16} className={selectedSubjectId === subject.id ? 'text-[#FDE68A]' : ''} /> 
-                  <span className="truncate">{subject.name}</span>
-                </button>
+                  <div className="flex items-center gap-3 truncate">
+                    <FileText size={16} className={selectedSubjectId === subject.id ? 'text-[#FDE68A]' : ''} /> 
+                    <span className="truncate">{subject.name}</span>
+                  </div>
+                  <button 
+                    onClick={(e) => handleDeleteSubject(e, subject.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#444] text-[#888] hover:text-[#EF4444] transition-all"
+                    title="Delete Subject"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               ))}
             </div>
 
@@ -321,17 +349,17 @@ export default function DashboardPage() {
 
             {/* Filters */}
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2 text-[#666] hover:text-white cursor-pointer transition-colors text-sm font-medium">
+              <div onClick={() => alert('Feature coming soon!')} className="flex items-center gap-2 text-[#666] hover:text-white cursor-pointer transition-colors text-sm font-medium">
                 <Search size={16} /> Smart Search
               </div>
               <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+                <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
                   Created by me <MoreHorizontal size={14} className="ml-1" />
                 </button>
-                <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+                <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
                   Recent Plans <MoreHorizontal size={14} className="ml-1" />
                 </button>
-                <button className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
+                <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#444] px-4 py-2 rounded-xl text-sm font-medium text-[#CCC] transition-all">
                   Archive
                 </button>
                 <button onClick={() => handleActionClick('study_all')} className="flex items-center gap-2 bg-[#FDE68A] text-[#111] hover:bg-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(253,230,138,0.2)] ml-2">
