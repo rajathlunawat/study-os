@@ -333,7 +333,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-4 shrink-0">
                 <Calendar size={24} className="text-[#34D399]" />
                 <div>
-                  <div className="text-xl font-bold text-white leading-none">{Math.round((stats?.task_completion || 0) * 100)}%</div>
+                  <div className="text-xl font-bold text-white leading-none">{tasks.length === 0 ? 0 : Math.round((stats?.task_completion || 0) * 100)}%</div>
                   <div className="text-xs font-medium text-[#666] mt-1">Completion Rate</div>
                 </div>
               </div>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-4 shrink-0">
                 <Target size={24} className="text-[#60A5FA]" />
                 <div>
-                  <div className="text-xl font-bold text-white leading-none">{prediction ? Math.round(prediction.readiness_score * 100) : 0}%</div>
+                  <div className="text-xl font-bold text-white leading-none">{prediction ? Math.round(prediction.readiness_score) : 0}%</div>
                   <div className="text-xs font-medium text-[#666] mt-1">Readiness Score</div>
                 </div>
               </div>
