@@ -181,7 +181,7 @@ export default function DashboardPage() {
     <div className="flex h-screen w-full bg-[#111111] text-[#E0E0E0] font-sans overflow-hidden" style={{ backgroundImage: 'radial-gradient(ellipse at 80% 20%, rgba(60, 40, 30, 0.15), transparent 40%), radial-gradient(ellipse at 20% 80%, rgba(40, 50, 70, 0.1), transparent 40%)' }}>
       
       {/* ── SIDEBAR ── */}
-      <aside className="w-[280px] min-w-[280px] h-full flex flex-col justify-between py-6 px-4 bg-[#111111]/80 backdrop-blur-2xl border-r border-[#222222] shadow-[4px_0_24px_rgba(0,0,0,0.4)] z-10">
+      <aside className="w-[280px] min-w-[280px] h-full flex flex-col justify-between py-6 px-4 bg-[#141414] border-r border-[#222222] shadow-[4px_0_24px_rgba(0,0,0,0.4)] z-10">
         <div className="flex flex-col gap-8">
           <nav className="flex flex-col gap-1.5">
             <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
@@ -313,7 +313,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stats Row */}
-            <div className="flex items-center gap-12 bg-[#141414]/50 backdrop-blur-md border border-[#222] rounded-2xl p-6 mb-10 shadow-sm overflow-x-auto custom-scrollbar">
+            <div className="flex items-center gap-12 bg-[#1A1A1A] border border-[#222] rounded-2xl p-6 mb-10 shadow-sm overflow-x-auto custom-scrollbar">
               <div className="flex items-center gap-4 shrink-0">
                 <Zap size={24} className="text-[#999]" />
                 <div>
@@ -393,7 +393,7 @@ export default function DashboardPage() {
                   const strokeDashoffset = circumference - (fakeProgress / 100) * circumference;
                   
                   return (
-                    <div key={task.id} className="group bg-[#141414]/80 backdrop-blur-md border border-[#2A2A2A] hover:border-[#444] rounded-2xl p-5 flex items-center gap-6 transition-all hover:bg-[#1A1A1A]/80 shadow-sm">
+                    <div key={task.id} className="group bg-[#141414] border border-[#2A2A2A] hover:border-[#444] rounded-2xl p-5 flex items-center gap-6 transition-all hover:bg-[#1A1A1A] shadow-sm">
                       {/* Progress Ring */}
                       <div className="relative flex items-center justify-center w-16 h-16 shrink-0">
                         <svg className="w-full h-full transform -rotate-90">
