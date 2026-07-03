@@ -1,35 +1,51 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { api, Source, ChatResponse } from '@/lib/api';
+import { api, Source, ChatResponse, ChatMessage, Subject } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
-
-/* ─── Types ─── */
-interface Message {
-  id: string;
-  role: 'user' | 'ai';
-  content: string;
-}
+import { useRouter } from 'next/navigation';
 
 /* ─── Main Notebook Page ─── */
 export default function NotebookPage() {
+  const router = useRouter();
+
+  const [subjectId, setSubjectId] = useState<string | null>(null);
+  const [subjectName, setSubjectName] = useState<string>('StudyOS Notebook');
+
   const [sources, setSources] = useState<Source[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Load existing documents from the API on mount
+  // Load subject on mount
   useEffect(() => {
-    api.getDocuments()
-      .then((docs) => setSources(docs))
-      .catch(() => {
-        // Backend not connected yet — start empty
-      });
+    const storedId = localStorage.getItem('studyos_subject_id');
+    if (storedId) {
+      setSubjectId(storedId);
+      
+      // Fetch subject name for UI
+      api.getSubjects().then(subs => {
+        const sub = subs.find(s => s.id === storedId);
+        if (sub) setSubjectName(sub.name);
+      }).catch(console.error);
+
+      // Fetch documents and chat history for this subject
+      Promise.all([
+        api.getDocuments(storedId),
+        api.getChatHistory(storedId)
+      ])
+      .then(([docs, history]) => {
+        setSources(docs);
+        setMessages(history);
+      })
+      .catch(console.error);
+    }
   }, []);
 
   // Auto-scroll chat to bottom
@@ -39,26 +55,32 @@ export default function NotebookPage() {
 
   /* ─── Upload Handler ─── */
   const handleUploadClick = () => {
+    if (!subjectId) {
+      setUploadError("Please select a subject from the Dashboard first.");
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !subjectId) return;
 
     setIsUploading(true);
     setUploadError(null);
 
     try {
-      const uploaded = await api.uploadDocument(file, 'notes');
+      const uploaded = await api.uploadDocument(file, 'notes', subjectId);
       setSources(prev => [...prev, uploaded]);
 
-      // First document — send a welcome message
-      if (sources.length === 0) {
-        setMessages([{
+      // If it's the very first document and chat is empty, simulate a welcome
+      if (sources.length === 0 && messages.length === 0) {
+        setMessages(prev => [...prev, {
           id: 'sys-welcome',
+          subject_id: subjectId,
           role: 'ai',
           content: `I've processed "${file.name}". Ask me anything about this document, or type /quiz to generate a quiz from it.`,
+          timestamp: new Date().toISOString()
         }]);
       }
     } catch (err: unknown) {
@@ -72,12 +94,14 @@ export default function NotebookPage() {
 
   /* ─── Chat Handler ─── */
   const handleSendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isTyping) return;
+    if (!inputValue.trim() || isTyping || !subjectId) return;
 
-    const userMsg: Message = {
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
+      subject_id: subjectId,
       role: 'user',
       content: inputValue.trim(),
+      timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -86,27 +110,32 @@ export default function NotebookPage() {
 
     try {
       const response: ChatResponse = await api.chat(
+        subjectId,
         userMsg.content,
         sources.map(s => s.id)
       );
 
-      const aiMsg: Message = {
+      const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
+        subject_id: subjectId,
         role: 'ai',
         content: response.reply,
+        timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch {
-      const errorMsg: Message = {
+      const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
+        subject_id: subjectId,
         role: 'ai',
         content: 'Sorry, I could not reach the backend. Please ensure the API server is running and NEXT_PUBLIC_API_URL is set.',
+        timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
     }
-  }, [inputValue, isTyping, sources]);
+  }, [inputValue, isTyping, sources, subjectId]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -131,7 +160,7 @@ export default function NotebookPage() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div style={{ fontSize: '24px' }}>🎓</div>
-          <div className="sidebar-title">StudyOS Notebook</div>
+          <div className="sidebar-title truncate">{subjectName}</div>
         </div>
 
         <div className="sidebar-content">
@@ -145,10 +174,10 @@ export default function NotebookPage() {
           <button
             className="upload-button"
             onClick={handleUploadClick}
-            disabled={isUploading}
-            style={{ marginBottom: '12px' }}
+            disabled={isUploading || !subjectId}
+            style={{ marginBottom: '12px', opacity: !subjectId ? 0.5 : 1 }}
           >
-            {isUploading ? '⏳ Uploading...' : '⊕ Add Source'}
+            {isUploading ? '⏳ Uploading...' : '⊕ Add Notes / Chapters'}
           </button>
           
           <Link href="/dashboard" style={{ display: 'block', textDecoration: 'none' }}>
@@ -167,7 +196,7 @@ export default function NotebookPage() {
           </Link>
 
           {uploadError && (
-            <p style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '12px' }}>
+            <p style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '12px', marginTop: '12px' }}>
               {uploadError}
             </p>
           )}
@@ -181,12 +210,12 @@ export default function NotebookPage() {
               marginBottom: '12px',
               fontWeight: 600,
             }}>
-              Sources ({sources.length})
+              Subject Materials ({sources.length})
             </h3>
 
             {sources.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                No sources uploaded yet.
+                No materials uploaded yet.
               </p>
             ) : (
               sources.map(source => (
@@ -219,13 +248,36 @@ export default function NotebookPage() {
 
       {/* ─── MAIN AREA (CHAT) ─── */}
       <main className="main-area">
-        {sources.length === 0 && messages.length === 0 ? (
-          /* Empty State */
+        {!subjectId ? (
+          /* Empty State No Subject */
+          <div className="empty-state">
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📂</div>
+            <h2>No Subject Selected</h2>
+            <p>
+              Please go to the Dashboard and select or create a custom subject (e.g. DSA, EGD, IS) to start tracking your performance.
+            </p>
+            <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+              <button
+                className="upload-button"
+                style={{
+                  marginTop: '24px',
+                  background: '#FACC15',
+                  color: '#111',
+                  border: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Go to Dashboard
+              </button>
+            </Link>
+          </div>
+        ) : sources.length === 0 && messages.length === 0 ? (
+          /* Empty State No Docs */
           <div className="empty-state">
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
-            <h2>Welcome to StudyOS</h2>
+            <h2>Welcome to {subjectName}</h2>
             <p>
-              Upload your syllabus, lecture notes, or previous year question papers to create a personalized AI-powered study notebook.
+              Upload chapters, lecture notes, or previous year question papers to create a personalized AI-powered study notebook for this subject.
             </p>
             <button
               className="upload-button"
@@ -272,7 +324,7 @@ export default function NotebookPage() {
                 <input
                   type="text"
                   className="chat-input"
-                  placeholder="Ask about your sources, or type /quiz to test yourself…"
+                  placeholder="Ask about your sources, or type /quiz or /flashcards to test yourself…"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}

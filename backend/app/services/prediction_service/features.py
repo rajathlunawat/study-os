@@ -35,11 +35,11 @@ class FeatureExtractor:
     """
 
     @staticmethod
-    def extract_features(db=None, user_id: int = 1, document_id: int | None = None) -> ReadinessFeatures:
+    def extract_features(subject_id: str) -> ReadinessFeatures:
         """
         Pull metrics across all services and normalize them to [0, 1].
         """
-        stats = get_user_stats()
+        stats = get_user_stats(subject_id)
         if not stats:
             stats = {
                 "quiz_accuracy": 0.5,

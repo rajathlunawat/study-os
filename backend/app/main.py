@@ -1,5 +1,5 @@
 """
-StudyOS Backend — Complete rewrite.
+StudyOS Backend — Complete rewrite with Subjects & Chat Memory.
 
 Uses the NEW google-genai SDK (supports AQ. auth keys).
 SQLite for persistent document storage.
@@ -15,17 +15,19 @@ load_dotenv()
 from fastapi import FastAPI, UploadFile, Form, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 # PDF parsing
 import fitz  # PyMuPDF
 
 # ── Database ──────────────────────────────────────────────────────
 from app.database import (
-    save_document, get_all_documents_metadata, get_document,
+    create_subject, get_all_subjects,
+    save_document, get_documents_metadata, get_document,
     get_all_documents_text, delete_document as db_delete_document,
     get_user_stats, update_user_stats,
-    save_study_task, get_all_study_tasks, update_study_task as db_update_study_task
+    save_study_task, get_study_tasks, update_study_task as db_update_study_task,
+    save_chat_message, get_chat_history
 )
 
 from app.services.prediction_service.model import ReadinessModel
@@ -61,11 +63,16 @@ app.add_middleware(
 
 
 # ── Pydantic Models ──────────────────────────────────────────────
+class SubjectRequest(BaseModel):
+    name: str
+
 class ChatRequest(BaseModel):
+    subject_id: str
     message: str
     document_ids: List[str] = []
 
 class PlanRequest(BaseModel):
+    subject_id: str
     topic: str
     target_date: str
     hours_per_day: float = 2.0
@@ -88,18 +95,18 @@ def extract_text_from_txt(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="replace")
 
 
-def get_combined_context(doc_ids: List[str], max_chars: int = 30000) -> str:
-    """Get document text. If no IDs given, use ALL documents."""
+def get_combined_context(subject_id: str, doc_ids: List[str], max_chars: int = 30000) -> str:
+    """Get document text. If no IDs given, use ALL documents in subject."""
     parts = []
     total = 0
 
     if not doc_ids:
-        docs = get_all_documents_text()
+        docs = get_all_documents_text(subject_id)
     else:
         docs = []
         for doc_id in doc_ids:
             doc = get_document(doc_id)
-            if doc:
+            if doc and doc.get("subject_id") == subject_id:
                 docs.append(doc)
 
     for doc in docs:
@@ -218,12 +225,25 @@ def health_check():
         "status": "ok",
         "message": "StudyOS Backend is running",
         "gemini": "connected" if gemini_client else "not configured",
-        "documents_loaded": len(get_all_documents_metadata()),
     }
 
+# --- Subjects ---
+@app.get("/api/subjects")
+async def get_subjects():
+    return get_all_subjects()
 
+@app.post("/api/subjects")
+async def add_subject(req: SubjectRequest):
+    subject_id = create_subject(req.name)
+    return {"id": subject_id, "name": req.name}
+
+# --- Documents ---
 @app.post("/api/documents/upload")
-async def upload_document(file: UploadFile = File(...), category: str = Form("notes")):
+async def upload_document(
+    file: UploadFile = File(...), 
+    category: str = Form("notes"),
+    subject_id: str = Form(...)
+):
     file_bytes = await file.read()
     filename = file.filename or "untitled"
 
@@ -242,6 +262,7 @@ async def upload_document(file: UploadFile = File(...), category: str = Form("no
 
     save_document(
         doc_id=doc_id,
+        subject_id=subject_id,
         title=filename,
         file_type=file_type,
         status="Ready",
@@ -250,10 +271,11 @@ async def upload_document(file: UploadFile = File(...), category: str = Form("no
         text_content=text
     )
 
-    print(f"📄 Uploaded '{filename}' — {len(text)} chars extracted")
+    print(f"📄 Uploaded '{filename}' for subject '{subject_id}' — {len(text)} chars")
 
     return {
         "id": doc_id,
+        "subject_id": subject_id,
         "title": filename,
         "file_type": file_type,
         "status": "Ready",
@@ -262,8 +284,8 @@ async def upload_document(file: UploadFile = File(...), category: str = Form("no
 
 
 @app.get("/api/documents")
-async def get_documents():
-    return get_all_documents_metadata()
+async def get_documents(subject_id: str):
+    return get_documents_metadata(subject_id)
 
 
 @app.delete("/api/documents/{doc_id}")
@@ -272,14 +294,25 @@ async def delete_document_endpoint(doc_id: str):
     return {"status": "deleted"}
 
 
+# --- Chat ---
+@app.get("/api/chat/{subject_id}")
+async def fetch_chat_history(subject_id: str):
+    history = get_chat_history(subject_id)
+    return history
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
+    # Save user message to history
+    save_chat_message(req.subject_id, "user", req.message)
+
     # Get document context
-    context = get_combined_context(req.document_ids)
+    context = get_combined_context(req.subject_id, req.document_ids)
 
     if not context.strip():
+        reply = "Please upload a document to this subject first so I can answer questions based on your study materials."
+        save_chat_message(req.subject_id, "ai", reply)
         return {
-            "reply": "Please upload a document first so I can answer questions based on your study materials.",
+            "reply": reply,
             "sources_used": [],
         }
 
@@ -289,6 +322,9 @@ async def chat(req: ChatRequest):
     # Fallback if Gemini failed
     if not reply:
         reply = format_fallback(req.message, context)
+
+    # Save AI reply to history
+    save_chat_message(req.subject_id, "ai", reply)
 
     # Return which documents were used
     sources_used = [
@@ -301,9 +337,11 @@ async def chat(req: ChatRequest):
         "sources_used": sources_used,
     }
 
+
+# --- Prediction & Planner ---
 @app.get("/api/predict")
-async def get_prediction():
-    features = FeatureExtractor.extract_features()
+async def get_prediction(subject_id: str):
+    features = FeatureExtractor.extract_features(subject_id)
     result = ReadinessModel.predict(features)
     return result
 
@@ -320,27 +358,28 @@ async def generate_planner(req: PlanRequest):
     
     for t in tasks:
         task_id = str(uuid.uuid4())
-        save_study_task(task_id, t.title, t.description, t.scheduled_date.isoformat(), False)
+        save_study_task(task_id, req.subject_id, t.title, t.description, t.scheduled_date.isoformat(), False)
         
     return {"message": f"Generated {len(tasks)} study tasks."}
 
 @app.get("/api/planner/tasks")
-async def get_tasks():
-    return get_all_study_tasks()
+async def get_tasks(subject_id: str):
+    return get_study_tasks(subject_id)
 
 @app.patch("/api/planner/tasks/{task_id}")
 async def patch_task(task_id: str, update: TaskUpdate):
-    db_update_study_task(task_id, update.completed)
+    subject_id = db_update_study_task(task_id, update.completed)
     
-    stats = get_user_stats()
-    if stats:
-        new_completion = min(stats["task_completion"] + 0.05 if update.completed else stats["task_completion"], 1.0)
-        new_streak = stats["study_streak"] + 1 if update.completed else stats["study_streak"]
-        update_user_stats({"task_completion": new_completion, "study_streak": new_streak})
-        
+    if subject_id:
+        stats = get_user_stats(subject_id)
+        if stats:
+            new_completion = min(stats["task_completion"] + 0.05 if update.completed else stats["task_completion"], 1.0)
+            new_streak = stats["study_streak"] + 1 if update.completed else stats["study_streak"]
+            update_user_stats(subject_id, {"task_completion": new_completion, "study_streak": new_streak})
+            
     return {"status": "updated"}
 
 @app.get("/api/stats")
-async def get_stats():
-    stats = get_user_stats()
+async def get_stats(subject_id: str):
+    stats = get_user_stats(subject_id)
     return stats or {}

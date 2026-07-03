@@ -8,12 +8,27 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000/api';
 
 /* ─── Types ─── */
+export interface Subject {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Source {
   id: string;
+  subject_id: string;
   title: string;
   file_type: string;
   status: string;
   uploaded_at?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  subject_id: string;
+  role: 'user' | 'ai';
+  content: string;
+  timestamp: string;
 }
 
 export interface ChatResponse {
@@ -31,6 +46,7 @@ export interface PredictionResponse {
 
 export interface StudyTask {
   id: string;
+  subject_id: string;
   title: string;
   description: string | null;
   scheduled_date: string;
@@ -39,6 +55,7 @@ export interface StudyTask {
 
 export interface UserStats {
   id: number;
+  subject_id: string;
   quiz_accuracy: number;
   flashcard_mastery: number;
   task_completion: number;
@@ -88,11 +105,25 @@ async function apiFetch<T>(
 
 /* ─── API Methods ─── */
 export const api = {
-  /** Upload a document (PDF, TXT, DOCX) */
-  uploadDocument: async (file: File, category: string): Promise<Source> => {
+  /** Get all subjects */
+  getSubjects: (): Promise<Subject[]> => {
+    return apiFetch<Subject[]>('/subjects');
+  },
+
+  /** Add a new subject */
+  addSubject: (name: string): Promise<Subject> => {
+    return apiFetch<Subject>('/subjects', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  /** Upload a document (PDF, TXT, DOCX) to a subject */
+  uploadDocument: async (file: File, category: string, subjectId: string): Promise<Source> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
+    formData.append('subject_id', subjectId);
 
     const url = `${BASE_URL}/documents/upload`;
     const response = await fetch(url, {
@@ -108,9 +139,9 @@ export const api = {
     return response.json() as Promise<Source>;
   },
 
-  /** List all uploaded documents */
-  getDocuments: (): Promise<Source[]> => {
-    return apiFetch<Source[]>('/documents');
+  /** List all uploaded documents for a subject */
+  getDocuments: (subjectId: string): Promise<Source[]> => {
+    return apiFetch<Source[]>(`/documents?subject_id=${subjectId}`);
   },
 
   /** Delete a document by ID */
@@ -118,24 +149,30 @@ export const api = {
     return apiFetch<void>(`/documents/${id}`, { method: 'DELETE' });
   },
 
+  /** Get chat history for a subject */
+  getChatHistory: (subjectId: string): Promise<ChatMessage[]> => {
+    return apiFetch<ChatMessage[]>(`/chat/${subjectId}`);
+  },
+
   /** Send a chat message for RAG-based answer */
-  chat: (message: string, documentIds: string[]): Promise<ChatResponse> => {
+  chat: (subjectId: string, message: string, documentIds: string[]): Promise<ChatResponse> => {
     return apiFetch<ChatResponse>('/chat', {
       method: 'POST',
-      body: JSON.stringify({ message, document_ids: documentIds }),
+      body: JSON.stringify({ subject_id: subjectId, message, document_ids: documentIds }),
     });
   },
 
-  /** Get Exam Readiness Prediction */
-  getPrediction: (): Promise<PredictionResponse> => {
-    return apiFetch<PredictionResponse>('/predict');
+  /** Get Exam Readiness Prediction for a subject */
+  getPrediction: (subjectId: string): Promise<PredictionResponse> => {
+    return apiFetch<PredictionResponse>(`/predict?subject_id=${subjectId}`);
   },
 
-  /** Generate Study Plan Tasks */
-  generatePlanner: (topic: string, targetDate: string, hoursPerDay: number = 2): Promise<{message: string}> => {
+  /** Generate Study Plan Tasks for a subject */
+  generatePlanner: (subjectId: string, topic: string, targetDate: string, hoursPerDay: number = 2): Promise<{message: string}> => {
     return apiFetch<{message: string}>('/planner/generate', {
       method: 'POST',
       body: JSON.stringify({
+        subject_id: subjectId,
         topic,
         target_date: targetDate,
         hours_per_day: hoursPerDay
@@ -143,9 +180,9 @@ export const api = {
     });
   },
 
-  /** Get all generated study tasks */
-  getTasks: (): Promise<StudyTask[]> => {
-    return apiFetch<StudyTask[]>('/planner/tasks');
+  /** Get all generated study tasks for a subject */
+  getTasks: (subjectId: string): Promise<StudyTask[]> => {
+    return apiFetch<StudyTask[]>(`/planner/tasks?subject_id=${subjectId}`);
   },
 
   /** Update task completion status */
@@ -156,9 +193,9 @@ export const api = {
     });
   },
   
-  /** Get user stats */
-  getStats: (): Promise<UserStats> => {
-    return apiFetch<UserStats>('/stats');
+  /** Get user stats for a subject */
+  getStats: (subjectId: string): Promise<UserStats> => {
+    return apiFetch<UserStats>(`/stats?subject_id=${subjectId}`);
   },
 
   /** Health check */
