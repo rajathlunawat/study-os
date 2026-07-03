@@ -195,6 +195,9 @@ export default function DashboardPage() {
             <Link href="/library" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Book size={18} /> Library
             </Link>
+            <Link href="/notebook" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+              <FileText size={18} /> Notebook
+            </Link>
             <button onClick={() => alert('Feature coming soon!')} className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <div className="flex items-center gap-3">
                 <Bell size={18} /> Notifications

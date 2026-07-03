@@ -268,4 +268,20 @@ export const api = {
   searchYouTube: (query: string): Promise<YouTubeSearchResponse> => {
     return apiFetch<YouTubeSearchResponse>(`/youtube/search?q=${encodeURIComponent(query)}`);
   },
+
+  /** Generate Quiz or Flashcards */
+  studyGenerate: (subjectId: string, type: 'quiz' | 'flashcards'): Promise<any[]> => {
+    return apiFetch<any[]>('/study/generate', {
+      method: 'POST',
+      body: JSON.stringify({ subject_id: subjectId, type }),
+    });
+  },
+
+  /** Send Study Score */
+  studyScore: (subjectId: string, type: 'quiz' | 'flashcard', score: number): Promise<{status: string, new_stats: any}> => {
+    return apiFetch<{status: string, new_stats: any}>('/study/score', {
+      method: 'POST',
+      body: JSON.stringify({ subject_id: subjectId, type, score }),
+    });
+  }
 };
