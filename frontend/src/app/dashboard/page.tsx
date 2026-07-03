@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, PredictionResponse, UserStats, StudyTask } from '@/lib/api';
-import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2 } from 'lucide-react';
+import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2, Circle, ArrowRight, Flame } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
