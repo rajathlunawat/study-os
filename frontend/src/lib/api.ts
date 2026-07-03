@@ -95,9 +95,16 @@ async function apiFetch<T>(
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
-  const defaultHeaders: HeadersInit = {
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('studyos_token');
+    if (token) {
+      defaultHeaders['Authorization'] = `Bearer ${token}`;
+    }
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -125,6 +132,22 @@ async function apiFetch<T>(
 
 /* ─── API Methods ─── */
 export const api = {
+  /** Login */
+  login: (username: string, password: string): Promise<{ token: string; user_id: string }> => {
+    return apiFetch<{ token: string; user_id: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  },
+
+  /** Register */
+  register: (username: string, password: string): Promise<{ token: string; user_id: string }> => {
+    return apiFetch<{ token: string; user_id: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  },
+
   /** Get all subjects */
   getSubjects: (): Promise<Subject[]> => {
     return apiFetch<Subject[]>('/subjects');

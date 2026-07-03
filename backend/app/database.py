@@ -15,12 +15,23 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # ── USERS ──
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    ''')
+
     # ── SUBJECTS ──
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS subjects (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            user_id TEXT NOT NULL DEFAULT 'anonymous'
         )
     ''')
 
@@ -81,13 +92,34 @@ def init_db():
     conn.commit()
     conn.close()
 
+
+# ── USERS CRUD ──
+def create_user(username: str, password_hash: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    user_id = str(uuid.uuid4())
+    created_at = datetime.utcnow().isoformat()
+    cursor.execute('INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)', (user_id, username, password_hash, created_at))
+    conn.commit()
+    conn.close()
+    return user_id
+
+def get_user_by_username(username: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 # ── SUBJECT CRUD ──
-def create_subject(name: str) -> str:
+def create_subject(name: str, user_id: str = "anonymous") -> str:
     conn = get_db_connection()
     cursor = conn.cursor()
     subject_id = str(uuid.uuid4())
     created_at = datetime.utcnow().isoformat()
-    cursor.execute('INSERT INTO subjects (id, name, created_at) VALUES (?, ?, ?)', (subject_id, name, created_at))
+    cursor.execute('INSERT INTO subjects (id, name, created_at, user_id) VALUES (?, ?, ?, ?)', (subject_id, name, created_at, user_id))
     # Initialize stats for this subject
     cursor.execute('''
         INSERT INTO user_stats (subject_id, quiz_accuracy, flashcard_mastery, task_completion, consistency_score, study_streak)
@@ -97,10 +129,10 @@ def create_subject(name: str) -> str:
     conn.close()
     return subject_id
 
-def get_all_subjects():
+def get_all_subjects(user_id: str = "anonymous"):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM subjects ORDER BY created_at DESC')
+    cursor.execute('SELECT * FROM subjects WHERE user_id = ? ORDER BY created_at DESC', (user_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

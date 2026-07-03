@@ -217,6 +217,46 @@ def format_fallback(query: str, text: str) -> str:
     )
 
 
+
+import jwt
+from passlib.context import CryptContext
+from fastapi import Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.database import create_user, get_user_by_username
+import datetime
+
+SECRET_KEY = os.environ.get("JWT_SECRET", "studyos_secret_key_123")
+ALGORITHM = "HS256"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
 # ── Routes ────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -227,18 +267,36 @@ def health_check():
         "gemini": "connected" if gemini_client else "not configured",
     }
 
+
+# --- Auth ---
+@app.post("/api/auth/register")
+async def register(req: AuthRequest):
+    if get_user_by_username(req.username):
+        raise HTTPException(status_code=400, detail="Username already exists")
+    user_id = create_user(req.username, get_password_hash(req.password))
+    token = create_access_token({"sub": user_id})
+    return {"token": token, "user_id": user_id}
+
+@app.post("/api/auth/login")
+async def login(req: AuthRequest):
+    user = get_user_by_username(req.username)
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token({"sub": user["id"]})
+    return {"token": token, "user_id": user["id"]}
+
 # --- Subjects ---
 @app.get("/api/subjects")
-async def get_subjects():
-    return get_all_subjects()
+async def get_subjects(user_id: str = Depends(get_current_user)):
+    return get_all_subjects(user_id)
 
 @app.post("/api/subjects")
-async def add_subject(req: SubjectRequest):
-    subject_id = create_subject(req.name)
+async def add_subject(req: SubjectRequest, user_id: str = Depends(get_current_user)):
+    subject_id = create_subject(req.name, user_id)
     return {"id": subject_id, "name": req.name}
 
 @app.delete("/api/subjects/{subject_id}")
-async def delete_subject_endpoint(subject_id: str):
+async def delete_subject_endpoint(subject_id: str, user_id: str = Depends(get_current_user)):
     from app.database import delete_subject as db_delete_subject
     db_delete_subject(subject_id)
     return {"status": "deleted"}
@@ -248,7 +306,8 @@ async def delete_subject_endpoint(subject_id: str):
 async def upload_document(
     file: UploadFile = File(...), 
     category: str = Form("notes"),
-    subject_id: str = Form(...)
+    subject_id: str = Form(...),
+    user_id: str = Depends(get_current_user)
 ):
     file_bytes = await file.read()
     filename = file.filename or "untitled"
@@ -290,24 +349,24 @@ async def upload_document(
 
 
 @app.get("/api/documents")
-async def get_documents(subject_id: str):
+async def get_documents(subject_id: str, user_id: str = Depends(get_current_user)):
     return get_documents_metadata(subject_id)
 
 
 @app.delete("/api/documents/{doc_id}")
-async def delete_document_endpoint(doc_id: str):
+async def delete_document_endpoint(doc_id: str, user_id: str = Depends(get_current_user)):
     db_delete_document(doc_id)
     return {"status": "deleted"}
 
 
 # --- Chat ---
 @app.get("/api/chat/{subject_id}")
-async def fetch_chat_history(subject_id: str):
+async def fetch_chat_history(subject_id: str, user_id: str = Depends(get_current_user)):
     history = get_chat_history(subject_id)
     return history
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
     # Save user message to history
     save_chat_message(req.subject_id, "user", req.message)
 
@@ -346,13 +405,13 @@ async def chat(req: ChatRequest):
 
 # --- Prediction & Planner ---
 @app.get("/api/predict")
-async def get_prediction(subject_id: str):
+async def get_prediction(subject_id: str, user_id: str = Depends(get_current_user)):
     features = FeatureExtractor.extract_features(subject_id)
     result = ReadinessModel.predict(features)
     return result
 
 @app.post("/api/planner/generate")
-async def generate_planner(req: PlanRequest):
+async def generate_planner(req: PlanRequest, user_id: str = Depends(get_current_user)):
     try:
         target_date = datetime.fromisoformat(req.target_date.replace('Z', '+00:00'))
     except ValueError:
@@ -369,11 +428,11 @@ async def generate_planner(req: PlanRequest):
     return {"message": f"Generated {len(tasks)} study tasks."}
 
 @app.get("/api/planner/tasks")
-async def get_tasks(subject_id: str):
+async def get_tasks(subject_id: str, user_id: str = Depends(get_current_user)):
     return get_study_tasks(subject_id)
 
 @app.patch("/api/planner/tasks/{task_id}")
-async def patch_task(task_id: str, update: TaskUpdate):
+async def patch_task(task_id: str, update: TaskUpdate, user_id: str = Depends(get_current_user)):
     subject_id = db_update_study_task(task_id, update.completed)
     
     if subject_id:
@@ -386,7 +445,7 @@ async def patch_task(task_id: str, update: TaskUpdate):
     return {"status": "updated"}
 
 @app.get("/api/stats")
-async def get_stats(subject_id: str):
+async def get_stats(subject_id: str, user_id: str = Depends(get_current_user)):
     stats = get_user_stats(subject_id)
     return stats or {}
 
@@ -470,3 +529,63 @@ async def library_doubt(req: DoubtRequest):
     except Exception as e:
         print(f"Gemini API error: {e}")
         return {"answer": "Failed to generate answer. Please try again."}
+
+
+# --- Study (Quizzes & Flashcards) ---
+class StudyGenerateRequest(BaseModel):
+    subject_id: str
+    type: str # 'quiz' or 'flashcards'
+
+@app.post("/api/study/generate")
+async def study_generate(req: StudyGenerateRequest, user_id: str = Depends(get_current_user)):
+    if not gemini_client:
+        raise HTTPException(status_code=500, detail="AI disabled")
+        
+    context = get_combined_context(req.subject_id, [])
+    if not context.strip():
+        raise HTTPException(status_code=400, detail="No documents in subject")
+        
+    if req.type == "quiz":
+        prompt = "Generate a 5-question multiple choice quiz based on these documents. Respond ONLY in valid JSON format like this: [{\"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"answer\": \"A\", \"explanation\": \"...\"}]"
+    else:
+        prompt = "Generate 10 flashcards based on these documents. Respond ONLY in valid JSON format like this: [{\"front\": \"Term...\", \"back\": \"Definition...\"}]"
+        
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"{prompt}\n\n=== DOCUMENTS ===\n{context}",
+            config=genai_types.GenerateContentConfig(
+                temperature=0.3,
+                response_mime_type="application/json"
+            )
+        )
+        import json
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate study materials")
+
+class StudyScoreRequest(BaseModel):
+    subject_id: str
+    type: str # 'quiz' or 'flashcard'
+    score: float # 0.0 to 1.0
+
+@app.post("/api/study/score")
+async def study_score(req: StudyScoreRequest, user_id: str = Depends(get_current_user)):
+    stats = get_user_stats(req.subject_id)
+    if not stats:
+        return {"status": "error", "detail": "stats not found"}
+        
+    updates = {}
+    if req.type == "quiz":
+        # moving average
+        new_acc = (stats["quiz_accuracy"] + req.score) / 2
+        updates["quiz_accuracy"] = min(new_acc, 1.0)
+    elif req.type == "flashcard":
+        new_mast = (stats["flashcard_mastery"] + req.score) / 2
+        updates["flashcard_mastery"] = min(new_mast, 1.0)
+        
+    if updates:
+        update_user_stats(req.subject_id, updates)
+        
+    return {"status": "updated", "new_stats": updates}

@@ -25,6 +25,12 @@ export default function NotebookPage() {
 
   // Load subject on mount
   useEffect(() => {
+    const token = localStorage.getItem('studyos_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
     const storedId = localStorage.getItem('studyos_subject_id');
     if (storedId) {
       setSubjectId(storedId);
@@ -46,7 +52,7 @@ export default function NotebookPage() {
       })
       .catch(console.error);
     }
-  }, []);
+  }, [router]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api, PredictionResponse, UserStats, StudyTask, Subject } from '@/lib/api';
-import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2, Circle, ArrowRight, Flame, Upload } from 'lucide-react';
+import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2, Circle, ArrowRight, Flame, Upload, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -29,8 +29,13 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadSubjects();
-  }, []);
+    const token = localStorage.getItem('studyos_token');
+    if (!token) {
+      router.push('/login');
+    } else {
+      loadSubjects();
+    }
+  }, [router]);
 
   useEffect(() => {
     if (selectedSubjectId) {
@@ -254,7 +259,18 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Removed user profile widget as requested */}
+        <div className="mt-auto pt-4 border-t border-[#222]">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('studyos_token');
+              localStorage.removeItem('studyos_user_id');
+              router.push('/login');
+            }} 
+            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-[#EF4444] hover:bg-[#1A1A1A] transition-colors"
+          >
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
