@@ -225,6 +225,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.database import create_user, get_user_by_username
 import datetime
 
+FIREBASE_PROJECT_ID = "studyos-1dd61"
 SECRET_KEY = os.environ.get("JWT_SECRET", "studyos_secret_key_123")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
