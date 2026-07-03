@@ -48,7 +48,7 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#111111] text-[#E0E0E0] font-sans overflow-y-auto custom-scrollbar pb-20">
+    <div className="h-screen bg-[#111111] text-[#E0E0E0] font-sans overflow-y-auto custom-scrollbar pb-20">
       
       {/* Header */}
       <header className="sticky top-0 z-10 bg-[#111111]/90 backdrop-blur-md border-b border-[#222] px-10 py-6 flex items-center justify-between">

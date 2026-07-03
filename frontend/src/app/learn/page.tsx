@@ -31,7 +31,7 @@ export default function LearnPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-[#E0E0E0] font-sans overflow-y-auto custom-scrollbar pb-20">
+    <div className="h-screen bg-[#0a0a0f] text-[#E0E0E0] font-sans overflow-y-auto custom-scrollbar pb-20">
       
       {/* Header */}
       <header className="sticky top-0 z-10 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-[#222] px-10 py-6 flex items-center justify-between">
