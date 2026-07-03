@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, PredictionResponse, UserStats, StudyTask, Subject } from '@/lib/api';
-import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2, Circle, ArrowRight, Flame } from 'lucide-react';
+import { Home, Book, Bell, GraduationCap, Users, Search, Plus, FileText, FolderOpen, MoreHorizontal, Share2, Edit2, Play, Trash2, Zap, Calendar, Target, Check, BarChart2, Circle, ArrowRight, Flame, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -25,6 +25,8 @@ export default function DashboardPage() {
   
   const [newTopic, setNewTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSubjects();
@@ -123,8 +125,34 @@ export default function DashboardPage() {
   };
 
   const handleActionClick = (action: string) => {
-    // Navigate to notebook to actually view/do things
-    router.push('/');
+    if (action === 'share' || action === 'edit') {
+      alert(`${action.charAt(0).toUpperCase() + action.slice(1)} feature is coming soon!`);
+    } else {
+      router.push('/');
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedSubjectId) return;
+
+    setIsUploading(true);
+    try {
+      await api.uploadDocument(file, 'notes', selectedSubjectId);
+      // Optional: alert success or just let user know
+      alert('Document uploaded successfully! View it in the Notebook.');
+      // Refresh stats in case upload affected readiness (though it doesn't directly, it might in the future)
+      fetchData(selectedSubjectId);
+    } catch (err: any) {
+      alert('Upload failed: ' + err?.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const activeTasks = tasks.filter(t => !t.completed);
@@ -198,15 +226,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-3 mt-auto rounded-xl hover:bg-[#1A1A1A] cursor-pointer transition-colors border border-transparent hover:border-[#222]">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FDE68A] to-[#D97706] flex items-center justify-center text-[#111] font-bold text-sm shadow-inner">
-            AB
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-white">Asha Brian</span>
-            <span className="text-xs font-medium text-[#FDE68A] flex items-center gap-1">Premium ✨</span>
-          </div>
-        </div>
+        {/* Removed user profile widget as requested */}
       </aside>
 
       {/* ── MAIN CONTENT ── */}
@@ -231,9 +251,25 @@ export default function DashboardPage() {
               
               <div className="flex items-center gap-3 bg-[#1A1A1A] border border-[#333] rounded-xl p-1 pr-1.5 focus-within:border-[#FDE68A] transition-colors shadow-lg">
                 <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  style={{ display: 'none' }} 
+                  accept=".pdf,.txt,.docx"
+                />
+                <button 
+                  onClick={handleUploadClick}
+                  disabled={isUploading}
+                  className="flex items-center gap-2 bg-[#2A2A2A] hover:bg-[#333] text-[#888] hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-[#444] disabled:opacity-50"
+                  title="Upload notes directly to this subject"
+                >
+                  <Upload size={16} /> {isUploading ? 'Uploading...' : 'Upload Notes'}
+                </button>
+                <div className="w-px h-6 bg-[#333] mx-1"></div>
+                <input 
                   type="text" 
                   placeholder="e.g. Chapter 4..." 
-                  className="bg-transparent border-none outline-none text-sm px-4 py-2 w-64 text-white placeholder-[#555]"
+                  className="bg-transparent border-none outline-none text-sm px-4 py-2 w-48 text-white placeholder-[#555]"
                   value={newTopic}
                   onChange={e => setNewTopic(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleGeneratePlan()}
@@ -353,7 +389,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-4 mt-3 text-xs font-medium text-[#666]">
                           <span className="flex items-center gap-1.5"><Target size={12} /> {fakeProgress}% Complete</span>
                           <span className="flex items-center gap-1.5"><Calendar size={12} /> {new Date(task.scheduled_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</span>
-                          <span className="flex items-center gap-1.5"><Users size={12} /> by Asha Brian (me)</span>
+                          <span className="flex items-center gap-1.5"><Users size={12} /> by you</span>
                         </div>
                       </div>
 
@@ -406,7 +442,7 @@ export default function DashboardPage() {
                             <h3 className="text-lg font-bold text-[#999] line-through decoration-[#444] truncate">{task.title}</h3>
                             <div className="flex items-center gap-4 mt-2 text-xs font-medium text-[#555]">
                               <span className="flex items-center gap-1.5"><Check size={12} className="text-[#34D399]" /> Completed</span>
-                              <span className="flex items-center gap-1.5"><Users size={12} /> by Asha Brian (me)</span>
+                              <span className="flex items-center gap-1.5"><Users size={12} /> by you</span>
                             </div>
                           </div>
 
