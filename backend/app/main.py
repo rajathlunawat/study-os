@@ -389,3 +389,84 @@ async def patch_task(task_id: str, update: TaskUpdate):
 async def get_stats(subject_id: str):
     stats = get_user_stats(subject_id)
     return stats or {}
+
+# --- YouTube & Library ---
+import yt_dlp
+import requests
+
+@app.get("/api/youtube/search")
+async def youtube_search(q: str):
+    if not q:
+        raise HTTPException(status_code=400, detail="Missing query")
+    try:
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'format': 'best',
+            'noplaylist': True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"ytsearch1:{q}", download=False)
+            if 'entries' in info and len(info['entries']) > 0:
+                entry = info['entries'][0]
+                return {
+                    "id": entry.get("id"),
+                    "title": entry.get("title"),
+                    "uploader": entry.get("uploader"),
+                    "view_count": entry.get("view_count")
+                }
+            return {"error": "No results found"}
+    except Exception as e:
+        print(f"yt-dlp error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/library/search")
+async def library_search(q: str):
+    if not q:
+        raise HTTPException(status_code=400, detail="Missing query")
+    try:
+        resp = requests.get(f"https://openlibrary.org/search.json?q={q}&limit=12")
+        resp.raise_for_status()
+        data = resp.json()
+        books = []
+        for doc in data.get("docs", []):
+            cover_url = None
+            if "cover_i" in doc:
+                cover_url = f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-M.jpg"
+            books.append({
+                "key": doc.get("key"),
+                "title": doc.get("title"),
+                "author": doc.get("author_name", ["Unknown"])[0],
+                "year": doc.get("first_publish_year"),
+                "cover_url": cover_url
+            })
+        return {"books": books}
+    except Exception as e:
+        print(f"OpenLibrary error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class DoubtRequest(BaseModel):
+    doubt: str
+
+@app.post("/api/library/doubt")
+async def library_doubt(req: DoubtRequest):
+    if not gemini_client:
+        return {"answer": "AI is disabled (no API key provided)."}
+    prompt = (
+        "You are an expert Librarian and live Teacher. The user has a specific doubt: "
+        f"'{req.doubt}'\n\n"
+        "Explain the answer clearly and concisely. THEN, you MUST cite at least one standard, "
+        "well-known textbook where the user can find more information. Provide the Book Name, "
+        "the Author, the likely Chapter name/number, and an approximate Page Number or Page Range where "
+        "this specific topic is typically discussed. Format beautifully in Markdown."
+    )
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(temperature=0.3)
+        )
+        return {"answer": response.text}
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        return {"answer": "Failed to generate answer. Please try again."}

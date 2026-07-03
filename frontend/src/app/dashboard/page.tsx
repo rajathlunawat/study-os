@@ -187,18 +187,18 @@ export default function DashboardPage() {
             <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Home size={18} /> Home
             </Link>
-            <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
+            <Link href="/library" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <Book size={18} /> Library
-            </button>
+            </Link>
             <button onClick={() => alert('Feature coming soon!')} className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors">
               <div className="flex items-center gap-3">
                 <Bell size={18} /> Notifications
               </div>
               <span className="bg-[#222] text-[#ccc] text-[10px] font-bold px-2 py-0.5 rounded-full">2</span>
             </button>
-            <div onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-semibold bg-[#FDE68A] text-[#111] shadow-[0_0_15px_rgba(253,230,138,0.15)] cursor-pointer">
+            <Link href="/learn" className="flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-semibold bg-[#FDE68A] text-[#111] shadow-[0_0_15px_rgba(253,230,138,0.15)] cursor-pointer">
               <GraduationCap size={18} /> Learn
-            </div>
+            </Link>
             <button onClick={() => alert('Feature coming soon!')} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#999] hover:text-white hover:bg-[#1A1A1A] transition-colors mt-1">
               <Users size={18} /> My Team
             </button>

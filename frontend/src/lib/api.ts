@@ -68,6 +68,26 @@ export interface ApiError {
   status: number;
 }
 
+export interface LibraryBook {
+  key: string;
+  title: string;
+  author: string;
+  year?: number;
+  cover_url?: string | null;
+}
+
+export interface LibrarySearchResponse {
+  books: LibraryBook[];
+}
+
+export interface YouTubeSearchResponse {
+  id?: string;
+  title?: string;
+  uploader?: string;
+  view_count?: number;
+  error?: string;
+}
+
 /* ─── Fetch Wrapper ─── */
 async function apiFetch<T>(
   endpoint: string,
@@ -206,5 +226,23 @@ export const api = {
   /** Health check */
   health: (): Promise<{ status: string; message: string }> => {
     return apiFetch('/health');
+  },
+
+  /** Search library books */
+  searchLibrary: (query: string): Promise<LibrarySearchResponse> => {
+    return apiFetch<LibrarySearchResponse>(`/library/search?q=${encodeURIComponent(query)}`);
+  },
+
+  /** Ask a doubt to the library AI */
+  askLibraryDoubt: (doubt: string): Promise<{answer: string}> => {
+    return apiFetch<{answer: string}>('/library/doubt', {
+      method: 'POST',
+      body: JSON.stringify({ doubt }),
+    });
+  },
+
+  /** Search YouTube videos */
+  searchYouTube: (query: string): Promise<YouTubeSearchResponse> => {
+    return apiFetch<YouTubeSearchResponse>(`/youtube/search?q=${encodeURIComponent(query)}`);
   },
 };
